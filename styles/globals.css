@@ -15,11 +15,14 @@ body {
 }
 
 .font-fantasy {
-  font-family: Luminari, fantasy;
+  font-family: Luminari, fantasy, "Almendra";
 }
 .font-cursive {
-  font-family: Snell Roundhand, cursive;
+  font-family: Snell Roundhand, "Pinyon Script", cursive;
 }
 .font-comic {
-  font-family: Comic Sans MS, Comic Sans, cursive;
+  font-family: Comic Sans MS, Comic Sans, "Comic Neue", cursive;
+}
+.font-typewriter {
+  font-family: Courier New, monospace, "Courier Prime";
 }

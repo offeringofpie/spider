@@ -3,20 +3,24 @@ export default function Progress() {
   const [scrolled, setScrolled] = useState(0);
 
   const handleScroll = useCallback((ev) => {
-    const scrollPx = document.documentElement.scrollTop;
+    const scrollPx = document.querySelector(".drawer-content").scrollTop;
     const winHeightPx =
-      document.documentElement.scrollHeight -
-      document.documentElement.clientHeight;
+      document.querySelector(".drawer-content").scrollHeight -
+      document.querySelector(".drawer-content").clientHeight;
     const scroll = `${(scrollPx / winHeightPx) * 100}%`;
     setScrolled(scroll);
   });
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      window.addEventListener("scroll", handleScroll);
+      document
+        .querySelector(".drawer-content")
+        .addEventListener("scroll", handleScroll);
 
       return () => {
-        window.removeEventListener("scroll", handleScroll);
+        document
+          .querySelector(".drawer-content")
+          .removeEventListener("scroll", handleScroll);
       };
     }
   }, [setScrolled]);

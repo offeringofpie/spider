@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import Header from "@components/Header";
 import ThemeSwitcher from "@components/ThemeSwitcher";
 import FontSwitcher from "@components/FontSwitcher";
-import Buttons from "@components/Buttons";
+import Drawer from "@components/Drawer";
 import Progress from "@components/Progress";
 import Sprite from "@components/Sprite";
 
@@ -25,7 +25,23 @@ export default function Home() {
         window.speechSynthesis.cancel();
       } else {
         const msg = new SpeechSynthesisUtterance();
-        msg.text = posts.content.replace(/(<([^>]+)>)/gi, "");
+        if (localStorage.getItem("voice")) {
+          let selectedVoice = window.speechSynthesis
+            .getVoices()
+            .filter((voice) => {
+              return voice.name == localStorage.getItem("voice");
+            });
+          msg.voice = selectedVoice[0];
+        }
+        if (localStorage.getItem("rate")) {
+          msg.rate = localStorage.getItem("rate");
+        }
+        if (localStorage.getItem("pitch")) {
+          msg.pitch = localStorage.getItem("pitch");
+        }
+
+        msg.text =
+          posts.title + "\n" + posts.content.replace(/(<([^>]+)>)/gi, "");
         window.speechSynthesis.speak(msg);
       }
     }
@@ -49,7 +65,7 @@ export default function Home() {
       try {
         setPosts({
           title: "Loading",
-          content: `<img src="/loading.svg" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />`,
+          content: `<img src="/loading.svg" className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />`,
         });
         const res = await fetch(`/.netlify/functions/node-fetch?q=${url}`, {
           headers: { accept: "Accept: application/json" },
@@ -81,23 +97,34 @@ export default function Home() {
         <title>{posts.title}</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
+
       <Progress />
-      <div
-        className={`w-full px-6 mx-auto text-xl max-w-6xl leading-normal text-center ${font}`}>
-        <div className="prose mx-auto lg:prose-xl flex items-stretch py-6 text-xl leading-normal text-center print:hidden">
-          <Header onClick={fetchData} />
-          <ThemeSwitcher />
-          <FontSwitcher onChange={changeFont} />
-          <Buttons onSpeak={speak} />
-        </div>
-        <article className="prose mx-auto lg:prose-xl prose-zinc text-left">
-          <h1 className="font-bold break-normal pt-6 pb-2 text-3xl md:text-4xl">
-            {posts.title}
-          </h1>
+      <div className="drawer drawer-end">
+        <input id="drawer" type="checkbox" className="drawer-toggle" />
+        <div className="drawer-content">
           <div
-            className="description"
-            dangerouslySetInnerHTML={{ __html: posts.content }}></div>
-        </article>
+            className={`w-full px-6 mx-auto text-xl max-w-6xl leading-normal text-center ${font}`}>
+            <div className="prose mx-auto lg:prose-xl flex items-stretch py-6 text-xl leading-normal text-center print:hidden">
+              <Header onClick={fetchData} />
+              <ThemeSwitcher />
+              <FontSwitcher onChange={changeFont} />
+            </div>
+            <article className="prose mx-auto lg:prose-xl prose-zinc text-left">
+              <h1 className="font-bold break-normal pt-6 pb-2 text-3xl md:text-4xl">
+                {posts.title}
+              </h1>
+              <div
+                className="description"
+                dangerouslySetInnerHTML={{ __html: posts.content }}></div>
+            </article>
+            <label
+              htmlFor="drawer"
+              className="drawer-button absolute right-2 top-2 text-primary hover:text-primary-focus cursor-pointer ease-linear duration-75 text-xl">
+              &#9783;<span className="sr-only">Open Menu</span>
+            </label>
+          </div>
+        </div>
+        <Drawer onSpeak={speak} />
       </div>
 
       <Sprite />
