@@ -15,6 +15,7 @@ const isUrl = (string) => {
 
 export default function Home() {
   const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [font, setFont] = useState("font-mono");
 
   function speak() {
@@ -63,14 +64,16 @@ export default function Home() {
       try {
         setPosts({
           title: "Loading",
-          content: `<img src="/loading.svg" className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />`,
+          content: ``,
         });
+        setLoading(true);
         const res = await fetch(`/.netlify/functions/node-fetch?q=${url}`, {
           headers: { accept: "Accept: application/json" },
         })
           .then((x) => x.json())
           .then((msg) => {
             setPosts(msg);
+            setLoading(false);
           });
       } catch (err) {
         console.log(err);
@@ -92,8 +95,54 @@ export default function Home() {
   return (
     <main className="min-h-screen mx-auto text-center">
       <Head>
-        <title>{posts.title}</title>
+        <title>{`${posts.title ? posts.title : "Spider Parser"}`}</title>
         <link rel="icon" href="/favicon.ico" />
+        <meta
+          name="description"
+          content={`${
+            posts.excerpt
+              ? posts.excerpt
+              : "Parse news articles and web pages with ease."
+          }`}
+        />
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary" key="twcard" />
+        <meta name="twitter:creator" content="jelo" key="twhandle" />
+
+        {/* Open Graph */}
+        <meta
+          property="og:url"
+          content={`${typeof window !== "undefined" ? window.location : ""}`}
+          key="ogurl"
+        />
+        <meta
+          property="og:image"
+          content={`${
+            posts.lead_image_url
+              ? posts.lead_image_url
+              : "https://spider.jlopes.eu/spiderweb.jpg"
+          }`}
+          key="ogimage"
+        />
+        <meta
+          property="og:site_name"
+          content="Spider Parser"
+          key="ogsitename"
+        />
+        <meta
+          property="og:title"
+          content={`${posts.title ? posts.title : "Spider Parser"}`}
+          key="ogtitle"
+        />
+        <meta
+          property="og:description"
+          content={`${
+            posts.excerpt
+              ? posts.excerpt
+              : "Parse news articles and web pages with ease."
+          }`}
+          key="ogdesc"
+        />
       </Head>
 
       <Progress />
@@ -103,7 +152,7 @@ export default function Home() {
           <div
             className={`w-full px-6 mx-auto text-xl max-w-6xl leading-normal text-center ${font}`}>
             <div className="prose mx-auto lg:prose-xl flex items-stretch pt-10 pb-6 text-xl leading-normal text-center print:hidden">
-              <Header onClick={fetchData} />
+              <Header onClick={fetchData} onSpeak={speak} />
             </div>
             <article className="prose mx-auto lg:prose-xl prose-zinc text-left">
               <h1 className="font-bold break-normal pt-6 pb-2 text-3xl md:text-4xl">
@@ -112,18 +161,28 @@ export default function Home() {
               <div
                 className="description"
                 dangerouslySetInnerHTML={{ __html: posts.content }}></div>
+              {loading ? (
+                <svg
+                  aria-hidden="true"
+                  className="absolute left-1/2 top-1/2 animate-spin -ml-1 mr-3 h-10 w-10 text-primary"
+                  viewBox="0 0 24 24">
+                  <use href="#loading" />
+                </svg>
+              ) : (
+                ""
+              )}
             </article>
             <label
               htmlFor="drawer"
-              className="drawer-button absolute right-2 top-2 text-primary hover:text-primary-focus cursor-pointer ease-linear duration-75 text-xxl">
+              className="drawer-button absolute right-2 top-2 text-primary-focus hover:text-primary cursor-pointer ease-linear duration-75 text-xxl">
               <svg aria-hidden="true" className="w-10 h-10" viewBox="0 0 24 24">
                 <use href="#spiderweb" />
               </svg>
-              <span className="sr-only">Open Menu</span>
+              <span className="sr-only animate-spin">Open Menu</span>
             </label>
           </div>
         </div>
-        <Drawer onSpeak={speak} onFont={changeFont} />
+        <Drawer onFont={changeFont} />
       </div>
 
       <Sprite />

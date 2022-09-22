@@ -52,13 +52,6 @@ export default function Drawer(props) {
           {isWindow ? (
             <span>
               <h4 className="heading-4">Text-to-Speech</h4>
-              <button
-                className="text-primary-focus hover:text-primary mb-3"
-                onClick={props.onSpeak}>
-                <svg aria-hidden="true" className="w-6 h-6" viewBox="0 0 20 20">
-                  <use href="#mic" />
-                </svg>
-              </button>
               <Voices />
             </span>
           ) : null}
