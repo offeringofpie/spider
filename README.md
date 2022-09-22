@@ -1,5 +1,7 @@
-# Simpler - Article reader
+# Spider - Article parser
 
-Built on [Next + Netlify Starter](https://github.com/netlify-templates/next-netlify-starter)
+Simplifies articles and website pages to show only the content.
 
-To be continued...
+---
+
+Built upon [Next + Netlify Starter](https://github.com/netlify-templates/next-netlify-starter)
