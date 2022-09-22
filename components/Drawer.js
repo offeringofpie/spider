@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import Voices from "@components/Drawer/Voices";
+import ThemeSwitcher from "@components/ThemeSwitcher";
+import FontSwitcher from "@components/FontSwitcher";
 
 export default function Drawer(props) {
   const [isWindow, setWindow] = useState(false);
@@ -26,14 +28,20 @@ export default function Drawer(props) {
   return (
     <div className="drawer-side  print:hidden">
       <label htmlFor="drawer" className="drawer-overlay"></label>
-      <div className="menu p-4 overflow-y-auto w-80 bg-base-100 text-base-content">
+      <div className="menu p-4 overflow-y-auto w-100 bg-base-100 text-base-content">
         <label htmlFor="drawer">
           <div className="text-primary hover:text-primary-focus text-xl rotate-45 p-1.5 absolute top-2 right-2 inline-flex items-center cursor-pointer ease-linear duration-75">
             &#10010;<span className="sr-only">Close menu</span>
           </div>
         </label>
 
-        <div className="mt-6">
+        <div className="mt-6 prose prose-slate">
+          <h3 className="heading-3">Options</h3>
+          <div className="flex">
+            <ThemeSwitcher />
+            <FontSwitcher onChange={props.onFont} />
+          </div>
+          <hr className="divider border-none" />
           {/* <button
             className="text-primary-focus hover:text-primary"
             onClick={print}>
@@ -43,6 +51,7 @@ export default function Drawer(props) {
           </button> */}
           {isWindow ? (
             <span>
+              <h4 className="heading-4">Text-to-Speech</h4>
               <button
                 className="text-primary-focus hover:text-primary mb-3"
                 onClick={props.onSpeak}>

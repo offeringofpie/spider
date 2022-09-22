@@ -29,6 +29,7 @@ export default function Voices() {
       }
 
       setVoices(voices);
+      setVoices(voices);
     }
   }, []);
 
@@ -62,7 +63,7 @@ export default function Voices() {
   return (
     <div>
       <select
-        className="select select-secondary w-full max-w-xs"
+        className="select select-secondary focus:outline-0 w-full max-w-xs text-primary-focus hover:text-primary rounded-xl"
         onChange={updateVoice}
         value={voice}>
         <option disabled value="">

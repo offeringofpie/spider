@@ -26,11 +26,19 @@ export default function Header({ onClick }) {
         <input
           type="text"
           id="url"
-          className="input input-accent bg-base-300 border-2 border-primary border-r-0 placeholder-primary-focus text-primary-focus text-sm rounded-none rounded-bl-lg block w-full pl-10 p-3 ease-linear h-full"
+          className="input input-accent bg-base-300 border-2 border-primary placeholder-primary-focus text-primary-focus text-sm rounded-none rounded-bl-lg rounded-tr-lg block w-full pl-10 p-3 ease-linear h-full"
           placeholder="Insert URL"
           defaultValue={value}
           required
         />
+        <div className="flex absolute -right-0.5 bottom-0 rotate-180 items-center pointer-events-none">
+          <svg
+            aria-hidden="true"
+            className="w-10 h-10 text-primary"
+            viewBox="0 0 24 24">
+            <use href="#web" />
+          </svg>
+        </div>
       </div>
     </form>
   );

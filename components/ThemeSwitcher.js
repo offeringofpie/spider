@@ -8,7 +8,7 @@ export default function ThemeSwitcher(props) {
   }, []);
   return (
     <select
-      className="select bg-base-300 border-primary border-2 focus:border-primary border-x-0 focus:outline-0 placeholder-primary-focus text-primary-focus text-sm max-w-xs flex-none rounded-none"
+      className="select bg-base-300 border-primary focus:border-primary border-r-0 focus:outline-0 text-primary-focus hover:text-primary text-sm rounded-none rounded-l-xl"
       data-choose-theme
       defaultValue="dark">
       <option disabled>Dark Themes</option>

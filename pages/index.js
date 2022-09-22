@@ -1,8 +1,6 @@
 import Head from "next/head";
 import React, { useState, useEffect } from "react";
 import Header from "@components/Header";
-import ThemeSwitcher from "@components/ThemeSwitcher";
-import FontSwitcher from "@components/FontSwitcher";
 import Drawer from "@components/Drawer";
 import Progress from "@components/Progress";
 import Sprite from "@components/Sprite";
@@ -104,10 +102,8 @@ export default function Home() {
         <div className="drawer-content">
           <div
             className={`w-full px-6 mx-auto text-xl max-w-6xl leading-normal text-center ${font}`}>
-            <div className="prose mx-auto lg:prose-xl flex items-stretch py-6 text-xl leading-normal text-center print:hidden">
+            <div className="prose mx-auto lg:prose-xl flex items-stretch pt-10 pb-6 text-xl leading-normal text-center print:hidden">
               <Header onClick={fetchData} />
-              <ThemeSwitcher />
-              <FontSwitcher onChange={changeFont} />
             </div>
             <article className="prose mx-auto lg:prose-xl prose-zinc text-left">
               <h1 className="font-bold break-normal pt-6 pb-2 text-3xl md:text-4xl">
@@ -119,12 +115,15 @@ export default function Home() {
             </article>
             <label
               htmlFor="drawer"
-              className="drawer-button absolute right-2 top-2 text-primary hover:text-primary-focus cursor-pointer ease-linear duration-75 text-xl">
-              &#9783;<span className="sr-only">Open Menu</span>
+              className="drawer-button absolute right-2 top-2 text-primary hover:text-primary-focus cursor-pointer ease-linear duration-75 text-xxl">
+              <svg aria-hidden="true" className="w-10 h-10" viewBox="0 0 24 24">
+                <use href="#spiderweb" />
+              </svg>
+              <span className="sr-only">Open Menu</span>
             </label>
           </div>
         </div>
-        <Drawer onSpeak={speak} />
+        <Drawer onSpeak={speak} onFont={changeFont} />
       </div>
 
       <Sprite />
