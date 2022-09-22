@@ -16,10 +16,15 @@ const isUrl = (string) => {
 export default function Home() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [font, setFont] = useState("font-mono");
 
   function speak() {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    if (
+      typeof window !== "undefined" &&
+      "speechSynthesis" in window &&
+      loaded
+    ) {
       if (window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
       } else {
@@ -62,10 +67,6 @@ export default function Home() {
 
     if (isUrl(url)) {
       try {
-        setPosts({
-          title: "Loading",
-          content: ``,
-        });
         setLoading(true);
         const res = await fetch(`/.netlify/functions/node-fetch?q=${url}`, {
           headers: { accept: "Accept: application/json" },
@@ -74,6 +75,7 @@ export default function Home() {
           .then((msg) => {
             setPosts(msg);
             setLoading(false);
+            setLoaded(true);
           });
       } catch (err) {
         console.log(err);
@@ -92,6 +94,7 @@ export default function Home() {
       }
     }
   }, []);
+
   return (
     <main className="min-h-screen mx-auto text-center">
       <Head>
@@ -151,8 +154,8 @@ export default function Home() {
         <div className="drawer-content">
           <div
             className={`w-full px-6 mx-auto text-xl max-w-6xl leading-normal text-center ${font}`}>
-            <div className="prose mx-auto lg:prose-xl flex items-stretch pt-10 pb-6 text-xl leading-normal text-center print:hidden">
-              <Header onClick={fetchData} onSpeak={speak} />
+            <div className="prose mx-auto lg:prose-xl flex items-stretch pt-16 pb-6 text-xl leading-normal text-center print:hidden">
+              <Header onClick={fetchData} onSpeak={speak} loaded={loaded} />
             </div>
             <article className="prose mx-auto lg:prose-xl prose-zinc text-left">
               <h1 className="font-bold break-normal pt-6 pb-2 text-3xl md:text-4xl">

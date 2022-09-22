@@ -1,21 +1,26 @@
 import { useState, useEffect } from "react";
 
+const sortByLang = (a, b) => {
+  const aname = a.lang.toUpperCase(),
+    bname = b.lang.toUpperCase();
+  if (aname < bname) return -1;
+  else if (aname == bname) return 0;
+  else return +1;
+};
+
 export default function Voices() {
-  const [voices, setVoices] = useState([]);
+  const [voices, setVoices] = useState(
+    typeof window !== "undefined"
+      ? window.speechSynthesis.getVoices().sort(sortByLang)
+      : []
+  );
   const [voice, setVoice] = useState(0);
   const [rate, setRate] = useState(1);
   const [pitch, setPitch] = useState(1);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const voices = window.speechSynthesis.getVoices().sort(function (a, b) {
-        const aname = a.lang.toUpperCase(),
-          bname = b.lang.toUpperCase();
-        if (aname < bname) return -1;
-        else if (aname == bname) return 0;
-        else return +1;
-      });
-
+      setVoices(window.speechSynthesis.getVoices().sort(sortByLang));
       if (localStorage.getItem("pitch"))
         setPitch(localStorage.getItem("pitch"));
 
@@ -27,9 +32,6 @@ export default function Voices() {
           })
         );
       }
-
-      setVoices(voices);
-      setVoices(voices);
     }
   }, []);
 

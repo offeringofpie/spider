@@ -42,7 +42,7 @@ export default function Header(props) {
       </form>
       <button
         className={`${
-          playing ? "text-primary" : "text-primary-focus"
+          playing && props.loaded ? "text-primary" : "text-primary-focus"
         } hover:text-primary h-full bg-base-300 border-primary border-2 border-l-0 rounded-tr-xl pr-1`}
         onClick={speak}>
         <svg aria-hidden="true" className="w-6 h-6" viewBox="0 0 20 20">
