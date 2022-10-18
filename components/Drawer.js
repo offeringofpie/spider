@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
-import Voices from "@components/Drawer/Voices";
-import ThemeSwitcher from "@components/ThemeSwitcher";
-import FontSwitcher from "@components/FontSwitcher";
+import { useEffect, useState } from 'react';
+import Voices from '@components/Drawer/Voices';
+import ThemeSwitcher from '@components/ThemeSwitcher';
+import FontSwitcher from '@components/FontSwitcher';
+import QRElem from '@components/QR/index.js';
 
 export default function Drawer(props) {
   const [isWindow, setWindow] = useState(false);
   const print = (ev) => {
-    if (typeof window !== "undefined") {
-      var headstr = document.head.outerHTML + "<body>";
-      var footstr = "</body>";
-      var newstr = document.querySelector("article").outerHTML;
+    if (typeof window !== 'undefined') {
+      var headstr = document.head.outerHTML + '<body>';
+      var footstr = '</body>';
+      var newstr = document.querySelector('article').outerHTML;
       var oldstr = document.body.innerHTML;
       document.body.innerHTML = headstr + newstr + footstr;
       window.print();
@@ -19,8 +20,8 @@ export default function Drawer(props) {
   };
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      if ("speechSynthesis" in window) {
+    if (typeof window !== 'undefined') {
+      if ('speechSynthesis' in window) {
         setWindow(true);
       }
     }
@@ -41,6 +42,14 @@ export default function Drawer(props) {
             <ThemeSwitcher />
             <FontSwitcher onChange={props.onFont} />
           </div>
+          {props.post && (
+            <div data-props={props.post}>
+              <hr className="divider border-none" />
+              <h3 className="heading-3">Scan for mobile reading</h3>
+              <QRElem url={props.post.url} />
+            </div>
+          )}
+
           <hr className="divider border-none" />
           {/* <button
             className="text-primary-focus hover:text-primary"

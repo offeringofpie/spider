@@ -14,7 +14,7 @@ const isUrl = (string) => {
 };
 
 export default function Home() {
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [font, setFont] = useState("font-mono");
@@ -73,6 +73,7 @@ export default function Home() {
         })
           .then((x) => x.json())
           .then((msg) => {
+            console.log(msg);
             setPosts(msg);
             setLoading(false);
             setLoaded(true);
@@ -161,6 +162,7 @@ export default function Home() {
               <h1 className="font-bold break-normal pt-6 pb-2 text-3xl md:text-4xl">
                 {posts.title}
               </h1>
+              <img src={posts.lead_image_url} />
               <div
                 className="description"
                 dangerouslySetInnerHTML={{ __html: posts.content }}></div>
@@ -185,7 +187,7 @@ export default function Home() {
             </label>
           </div>
         </div>
-        <Drawer onFont={changeFont} />
+        <Drawer onFont={changeFont} post={posts} />
       </div>
 
       <Sprite />
