@@ -1,9 +1,9 @@
-import Head from "next/head";
-import React, { useState, useEffect } from "react";
-import Header from "@components/Header";
-import Drawer from "@components/Drawer";
-import Progress from "@components/Progress";
-import Sprite from "@components/Sprite";
+import Head from 'next/head';
+import React, { useState, useEffect } from 'react';
+import Header from '@components/Header';
+import Drawer from '@components/Drawer';
+import Progress from '@components/Progress';
+import Sprite from '@components/Sprite';
 
 const isUrl = (string) => {
   try {
@@ -17,35 +17,35 @@ export default function Home() {
   const [posts, setPosts] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [font, setFont] = useState("font-mono");
+  const [font, setFont] = useState('font-mono');
 
   function speak() {
     if (
-      typeof window !== "undefined" &&
-      "speechSynthesis" in window &&
+      typeof window !== 'undefined' &&
+      'speechSynthesis' in window &&
       loaded
     ) {
       if (window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
       } else {
         const msg = new SpeechSynthesisUtterance();
-        if (localStorage.getItem("voice")) {
+        if (localStorage.getItem('voice')) {
           let selectedVoice = window.speechSynthesis
             .getVoices()
             .filter((voice) => {
-              return voice.name == localStorage.getItem("voice");
+              return voice.name == localStorage.getItem('voice');
             });
           msg.voice = selectedVoice[0];
         }
-        if (localStorage.getItem("rate")) {
-          msg.rate = localStorage.getItem("rate");
+        if (localStorage.getItem('rate')) {
+          msg.rate = localStorage.getItem('rate');
         }
-        if (localStorage.getItem("pitch")) {
-          msg.pitch = localStorage.getItem("pitch");
+        if (localStorage.getItem('pitch')) {
+          msg.pitch = localStorage.getItem('pitch');
         }
 
         msg.text =
-          posts.title + "\n" + posts.content.replace(/(<([^>]+)>)/gi, "");
+          posts.title + '\n' + posts.content.replace(/(<([^>]+)>)/gi, '');
         window.speechSynthesis.speak(msg);
       }
     }
@@ -53,15 +53,15 @@ export default function Home() {
 
   function changeFont(ev) {
     const value = ev.target.value;
-    if (typeof window !== "undefined") {
-      localStorage.setItem("font", value);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('font', value);
     }
     setFont(value);
   }
 
   async function fetchData(e) {
-    let url = typeof e == "string" ? e : e.target.querySelector("#url").value;
-    if (typeof e !== "string") {
+    let url = typeof e == 'string' ? e : e.target.querySelector('#url').value;
+    if (typeof e !== 'string') {
       e.preventDefault();
     }
 
@@ -69,11 +69,10 @@ export default function Home() {
       try {
         setLoading(true);
         const res = await fetch(`/.netlify/functions/node-fetch?q=${url}`, {
-          headers: { accept: "Accept: application/json" },
+          headers: { accept: 'Accept: application/json' },
         })
           .then((x) => x.json())
           .then((msg) => {
-            console.log(msg);
             setPosts(msg);
             setLoading(false);
             setLoaded(true);
@@ -85,13 +84,13 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      if (localStorage.getItem("font")) {
-        setFont(localStorage.getItem("font"));
+      if (localStorage.getItem('font')) {
+        setFont(localStorage.getItem('font'));
       }
-      if (urlParams.get("q")) {
-        fetchData(urlParams.get("q"));
+      if (urlParams.get('q')) {
+        fetchData(urlParams.get('q'));
       }
     }
   }, []);
@@ -99,14 +98,14 @@ export default function Home() {
   return (
     <main className="min-h-screen mx-auto text-center">
       <Head>
-        <title>{`${posts.title ? posts.title : "Spider Parser"}`}</title>
+        <title>{`${posts.title ? posts.title : 'Spider Parser'}`}</title>
         <link rel="icon" href="/favicon.ico" />
         <meta
           name="description"
           content={`${
             posts.excerpt
               ? posts.excerpt
-              : "Parse news articles and web pages with ease."
+              : 'Parse news articles and web pages with ease.'
           }`}
         />
         {/* Twitter */}
@@ -116,7 +115,7 @@ export default function Home() {
         {/* Open Graph */}
         <meta
           property="og:url"
-          content={`${typeof window !== "undefined" ? window.location : ""}`}
+          content={`${typeof window !== 'undefined' ? window.location : ''}`}
           key="ogurl"
         />
         <meta
@@ -124,7 +123,7 @@ export default function Home() {
           content={`${
             posts.lead_image_url
               ? posts.lead_image_url
-              : "https://spider.jlopes.eu/spiderweb.jpg"
+              : 'https://spider.jlopes.eu/spiderweb.jpg'
           }`}
           key="ogimage"
         />
@@ -135,7 +134,7 @@ export default function Home() {
         />
         <meta
           property="og:title"
-          content={`${posts.title ? posts.title : "Spider Parser"}`}
+          content={`${posts.title ? posts.title : 'Spider Parser'}`}
           key="ogtitle"
         />
         <meta
@@ -143,7 +142,7 @@ export default function Home() {
           content={`${
             posts.excerpt
               ? posts.excerpt
-              : "Parse news articles and web pages with ease."
+              : 'Parse news articles and web pages with ease.'
           }`}
           key="ogdesc"
         />
@@ -154,7 +153,8 @@ export default function Home() {
         <input id="drawer" type="checkbox" className="drawer-toggle" />
         <div className="drawer-content">
           <div
-            className={`w-full px-6 mx-auto text-xl max-w-6xl leading-normal text-center ${font}`}>
+            className={`w-full px-6 mx-auto text-xl max-w-6xl leading-normal text-center ${font}`}
+          >
             <div className="prose mx-auto lg:prose-xl flex items-stretch pt-16 pb-6 text-xl leading-normal text-center print:hidden">
               <Header onClick={fetchData} onSpeak={speak} loaded={loaded} />
             </div>
@@ -162,24 +162,31 @@ export default function Home() {
               <h1 className="font-bold break-normal pt-6 pb-2 text-3xl md:text-4xl">
                 {posts.title}
               </h1>
-              <img src={posts.lead_image_url} />
+              {posts.lead_image_url && !(posts.content.substring(0,500).includes('<img') || posts.content.substring(0,500).includes('<figure')) ? (
+                <img src={posts.lead_image_url} />
+              ) : (
+                ''
+              )}
               <div
                 className="description"
-                dangerouslySetInnerHTML={{ __html: posts.content }}></div>
+                dangerouslySetInnerHTML={{ __html: posts.content }}
+              ></div>
               {loading ? (
                 <svg
                   aria-hidden="true"
                   className="absolute left-1/2 top-1/2 animate-spin -ml-1 mr-3 h-10 w-10 text-primary"
-                  viewBox="0 0 24 24">
+                  viewBox="0 0 24 24"
+                >
                   <use href="#loading" />
                 </svg>
               ) : (
-                ""
+                ''
               )}
             </article>
             <label
               htmlFor="drawer"
-              className="drawer-button absolute right-2 top-2 text-primary-focus hover:text-primary cursor-pointer ease-linear duration-75 text-xxl">
+              className="drawer-button absolute right-2 top-2 text-primary-focus hover:text-primary cursor-pointer ease-linear duration-75 text-xxl"
+            >
               <svg aria-hidden="true" className="w-10 h-10" viewBox="0 0 24 24">
                 <use href="#spiderweb" />
               </svg>
