@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { defaultStore, useStore } from '../store/store';
 import Header from '../components/Header';
 import Drawer from '../components/Drawer';
 import Progress from '../components/Progress';
@@ -16,7 +17,7 @@ export default function Home() {
   const [posts, setPosts] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [font, setFont] = useState('font-mono');
+  const [state, setState] = useStore(defaultStore);
 
   function speak() {
     if (
@@ -50,14 +51,6 @@ export default function Home() {
     }
   }
 
-  function changeFont(ev) {
-    const value = ev.target.value;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('font', value);
-    }
-    setFont(value);
-  }
-
   async function fetchData(e) {
     let url = typeof e == 'string' ? e : e.target.querySelector('#url').value;
     if (typeof e !== 'string') {
@@ -85,9 +78,6 @@ export default function Home() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      if (localStorage.getItem('font')) {
-        setFont(localStorage.getItem('font'));
-      }
       if (urlParams.get('q')) {
         fetchData(urlParams.get('q'));
       }
@@ -95,57 +85,56 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="min-h-screen mx-auto text-center">
-      <Progress />
-      <div className="drawer drawer-end">
-        <input id="drawer" type="checkbox" className="drawer-toggle" />
-        <div className="drawer-content">
-          <div
-            className={`w-full px-6 mx-auto text-xl max-w-6xl leading-normal text-center ${font}`}
-          >
-            <div className="prose mx-auto lg:prose-xl flex items-stretch pt-16 pb-6 text-xl leading-normal text-center print:hidden">
-              <Header onClick={fetchData} onSpeak={speak} loaded={loaded} />
-            </div>
-            <article className="prose mx-auto lg:prose-xl prose-zinc text-left">
-              <h1 className="font-bold break-normal pt-6 pb-2 text-3xl md:text-4xl">
-                {posts.title}
-              </h1>
-              {posts.lead_image_url && !(posts.content.substring(0,500).includes('<img') || posts.content.substring(0,500).includes('<figure')) ? (
-                <img src={posts.lead_image_url} />
-              ) : (
-                ''
-              )}
-              <div
-                className="description"
-                dangerouslySetInnerHTML={{ __html: posts.content }}
-              ></div>
-              {loading ? (
-                <svg
-                  aria-hidden="true"
-                  className="absolute left-1/2 top-1/2 animate-spin -ml-1 mr-3 h-10 w-10 text-primary"
-                  viewBox="0 0 24 24"
-                >
-                  <use href="#loading" />
-                </svg>
-              ) : (
-                ''
-              )}
-            </article>
-            <label
-              htmlFor="drawer"
-              className="drawer-button absolute right-2 top-2 text-primary-focus hover:text-primary cursor-pointer ease-linear duration-75 text-xxl"
-            >
-              <svg aria-hidden="true" className="w-10 h-10" viewBox="0 0 24 24">
-                <use href="#spiderweb" />
-              </svg>
-              <span className="sr-only animate-spin">Open Menu</span>
-            </label>
+    <div className="drawer drawer-end">
+      <input id="drawer" type="checkbox" className="drawer-toggle" />
+      <div className="drawer-content">
+        <div
+          className={`w-full px-6 mx-auto text-xl max-w-6xl leading-normal text-center`}
+        >
+          <div className="prose mx-auto lg:prose-xl flex items-stretch pt-16 pb-6 text-xl leading-normal text-center print:hidden">
+            <Header onClick={fetchData} onSpeak={speak} loaded={loaded} />
           </div>
+          <article className="prose mx-auto lg:prose-xl prose-zinc text-left">
+            <h1 className="font-bold break-normal pt-6 pb-2 text-3xl md:text-4xl">
+              {posts.title}
+            </h1>
+            {posts.lead_image_url &&
+            !(
+              posts.content.substring(0, 500).includes('<img') ||
+              posts.content.substring(0, 500).includes('<figure')
+            ) ? (
+              <img src={posts.lead_image_url} />
+            ) : (
+              ''
+            )}
+            <div
+              className="description"
+              dangerouslySetInnerHTML={{ __html: posts.content }}
+            ></div>
+            {loading ? (
+              <svg
+                aria-hidden="true"
+                className="absolute left-1/2 top-1/2 animate-spin -ml-1 mr-3 h-10 w-10 text-primary"
+                viewBox="0 0 24 24"
+              >
+                <use href="#loading" />
+              </svg>
+            ) : (
+              ''
+            )}
+          </article>
+          <label
+            htmlFor="drawer"
+            className="drawer-button absolute right-2 top-2 text-primary-focus hover:text-primary cursor-pointer ease-linear duration-75 text-xxl"
+          >
+            <svg aria-hidden="true" className="w-10 h-10" viewBox="0 0 24 24">
+              <use href="#spiderweb" />
+            </svg>
+            <span className="sr-only animate-spin">Open Menu</span>
+          </label>
         </div>
-        <Drawer onFont={changeFont} post={posts} />
       </div>
-
-      <Sprite />
-    </main>
+      <Drawer post={posts} />
+    </div>
   );
 }

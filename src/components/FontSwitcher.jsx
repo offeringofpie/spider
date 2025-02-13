@@ -1,30 +1,20 @@
 import { useState, useEffect } from "react";
+import { defaultStore, useStore } from '../store/store';
 
 export default function FontSwitcher(props) {
+  const [state, setState] = useStore(defaultStore);
   const [font, setFont] = useState("");
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      if (localStorage.getItem("font")) {
-        setFont(localStorage.getItem("font"));
-      }
-    }
-  }, []);
-
-  const updateFont = (ev) => {
-    if (typeof window !== "undefined") {
-      setFont(localStorage.setItem("font", ev.target.value));
-      setFont(localStorage.getItem("font"));
-    }
-    props.onChange(ev);
-  };
+  const change = (e) => {
+    setState({font: e.target.value});
+  }
 
   return (
     <select
       className="select bg-base-300 border-primary focus:border-primary border-l-0 focus:outline-0 text-primary-focus hover:text-primary text-sm rounded-none rounded-r-xl"
-      value={font}
-      data-value={font}
-      onChange={updateFont}>
+      defaultValue={state.font}
+      onChange={change}
+      onBlur={change}>
       <option disabled>Select Font</option>
       <option value="font-comic">Comic</option>
       <option value="font-cursive">Cursive</option>

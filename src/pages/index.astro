@@ -2,9 +2,15 @@
 import "../styles/global.css";
 import Layout from '../layouts/Layout.astro';
 import Home from '../layouts/Home';
+import Progress from "../components/Progress";
+import Sprite from "../components/Sprite";
 
 ---
 
 <Layout>
-	<Home />
+	<main class="min-h-screen mx-auto text-center">
+		<Progress client:load />
+		<Home client:load />
+		<Sprite client:load />
+	</main>
 </Layout>
