@@ -1,9 +1,8 @@
-import Head from 'next/head';
 import React, { useState, useEffect } from 'react';
-import Header from '@components/Header';
-import Drawer from '@components/Drawer';
-import Progress from '@components/Progress';
-import Sprite from '@components/Sprite';
+import Header from '../components/Header';
+import Drawer from '../components/Drawer';
+import Progress from '../components/Progress';
+import Sprite from '../components/Sprite';
 
 const isUrl = (string) => {
   try {
@@ -97,57 +96,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen mx-auto text-center">
-      <Head>
-        <title>{`${posts.title ? posts.title : 'Spider Parser'}`}</title>
-        <link rel="icon" href="/favicon.ico" />
-        <meta
-          name="description"
-          content={`${
-            posts.excerpt
-              ? posts.excerpt
-              : 'Parse news articles and web pages with ease.'
-          }`}
-        />
-        {/* Twitter */}
-        <meta name="twitter:card" content="summary" key="twcard" />
-        <meta name="twitter:creator" content="jelo" key="twhandle" />
-
-        {/* Open Graph */}
-        <meta
-          property="og:url"
-          content={`${typeof window !== 'undefined' ? window.location : ''}`}
-          key="ogurl"
-        />
-        <meta
-          property="og:image"
-          content={`${
-            posts.lead_image_url
-              ? posts.lead_image_url
-              : 'https://spider.jlopes.eu/spiderweb.jpg'
-          }`}
-          key="ogimage"
-        />
-        <meta
-          property="og:site_name"
-          content="Spider Parser"
-          key="ogsitename"
-        />
-        <meta
-          property="og:title"
-          content={`${posts.title ? posts.title : 'Spider Parser'}`}
-          key="ogtitle"
-        />
-        <meta
-          property="og:description"
-          content={`${
-            posts.excerpt
-              ? posts.excerpt
-              : 'Parse news articles and web pages with ease.'
-          }`}
-          key="ogdesc"
-        />
-      </Head>
-
       <Progress />
       <div className="drawer drawer-end">
         <input id="drawer" type="checkbox" className="drawer-toggle" />

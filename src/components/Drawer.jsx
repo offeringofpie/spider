@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import Voices from '@components/Drawer/Voices';
-import ThemeSwitcher from '@components/ThemeSwitcher';
-import FontSwitcher from '@components/FontSwitcher';
-import QRElem from '@components/QR/index.js';
+import Voices from '../components/Drawer/Voices';
+import ThemeSwitcher from '../components/ThemeSwitcher';
+import FontSwitcher from '../components/FontSwitcher';
+import QRElem from '../components/QR/index';
 
 export default function Drawer(props) {
   const [isWindow, setWindow] = useState(false);
