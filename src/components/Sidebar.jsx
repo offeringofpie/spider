@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import Voices from '../components/Drawer/Voices';
-import ThemeSwitcher from '../components/ThemeSwitcher';
-import FontSwitcher from '../components/FontSwitcher';
-import QRElem from '../components/QR/index';
+import Voices from './Drawer/Voices';
+import ThemeSwitcher from './ThemeSwitcher';
+import FontSwitcher from './FontSwitcher';
+import QRElem from './QR/index';
 
-export default function Drawer(props) {
+export default function Sidebar(props) {
   const [isWindow, setWindow] = useState(false);
   const print = (ev) => {
     if (typeof window !== 'undefined') {

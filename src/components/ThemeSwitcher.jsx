@@ -16,7 +16,7 @@ export default function ThemeSwitcher(props) {
   // }, []);
   return (
     <select
-      className="select bg-base-300 border-primary focus:border-primary border-r-0 focus:outline-0 text-primary-focus hover:text-primary text-sm rounded-none rounded-l-xl"
+      className="select bg-base-300 border-primary focus:border-primary border-r-0 focus:outline-0 text-primary-focus hover:text-primary text-sm rounded-none rounded-l-xl cursor-pointer"
       defaultValue={state.theme}
       onChange={change}
       onBlur={change}>

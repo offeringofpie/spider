@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ShareButton from "../components/shareButton";
 
 export default function Header(props) {
   const [value, setValue] = useState("");
@@ -25,7 +26,7 @@ export default function Header(props) {
           <div className="flex absolute -left-0.5 items-center pointer-events-none">
             <svg
               aria-hidden="true"
-              className="w-10 h-10 text-primary"
+              className="w-10 h-10 text-primary z-10"
               viewBox="0 0 24 24">
               <use href="#web" />
             </svg>
@@ -40,10 +41,11 @@ export default function Header(props) {
           />
         </div>
       </form>
+      <ShareButton />
       <button
         className={`${
           playing && props.loaded ? "text-primary" : "text-primary-focus"
-        } hover:text-primary h-full bg-base-300 border-primary border-2 border-l-0 rounded-tr-xl pr-1`}
+        } cursor-pointer hover:text-primary h-full bg-base-300 border-primary border-2 border-l-0 rounded-tr-xl pr-1`}
         onClick={speak}>
         <svg aria-hidden="true" className="w-6 h-6" viewBox="0 0 20 20">
           <use href="#mic" />

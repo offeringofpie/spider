@@ -11,7 +11,7 @@ export default function FontSwitcher(props) {
 
   return (
     <select
-      className="select bg-base-300 border-primary focus:border-primary border-l-0 focus:outline-0 text-primary-focus hover:text-primary text-sm rounded-none rounded-r-xl"
+      className="select bg-base-300 border-primary focus:border-primary border-l-0 focus:outline-0 text-primary-focus hover:text-primary text-sm rounded-none rounded-r-xl cursor-pointer"
       defaultValue={state.font}
       onChange={change}
       onBlur={change}>

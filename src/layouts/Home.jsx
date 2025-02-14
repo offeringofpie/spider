@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
 import Header from '../components/Header';
-import Drawer from '../components/Drawer';
+import Sidebar from '../components/Sidebar';
 import Progress from '../components/Progress';
 import Sprite from '../components/Sprite';
 
@@ -60,7 +60,7 @@ export default function Home() {
     if (isUrl(url)) {
       try {
         setLoading(true);
-        const res = await fetch(`/.netlify/functions/node-fetch?q=${url}`, {
+        const res = await fetch(`http://localhost:9999/.netlify/functions/node-fetch?q=${url}`, {
           headers: { accept: 'Accept: application/json' },
         })
           .then((x) => x.json())
@@ -68,6 +68,7 @@ export default function Home() {
             setPosts(msg);
             setLoading(false);
             setLoaded(true);
+            history.pushState({}, "New Page", `/?q=${url}`);
           });
       } catch (err) {
         console.log(err);
@@ -134,7 +135,7 @@ export default function Home() {
           </label>
         </div>
       </div>
-      <Drawer post={posts} />
+      <Sidebar post={posts} />
     </div>
   );
 }
