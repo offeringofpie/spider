@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 
 const sortByLang = (a, b) => {
   const aname = a.lang.toUpperCase(),
@@ -9,24 +9,26 @@ const sortByLang = (a, b) => {
 };
 
 export default function Voices() {
-  const [voices, setVoices] = useState(window.speechSynthesis.getVoices().sort(sortByLang));
+  const [voices, setVoices] = useState(
+    window.speechSynthesis.getVoices().sort(sortByLang)
+  );
   const [post, setPost] = useState(false);
-  
+
   const [voice, setVoice] = useState(0);
   const [rate, setRate] = useState(1);
   const [pitch, setPitch] = useState(1);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       setVoices(window.speechSynthesis.getVoices().sort(sortByLang));
-      if (localStorage.getItem("pitch"))
-        setPitch(localStorage.getItem("pitch"));
+      if (localStorage.getItem('pitch'))
+        setPitch(localStorage.getItem('pitch'));
 
-      if (localStorage.getItem("rate")) setRate(localStorage.getItem("rate"));
-      if (localStorage.getItem("voice")) {
+      if (localStorage.getItem('rate')) setRate(localStorage.getItem('rate'));
+      if (localStorage.getItem('voice')) {
         setVoice(
           voices.findIndex((voice) => {
-            return voice.name == localStorage.getItem("voice");
+            return voice.name == localStorage.getItem('voice');
           })
         );
       }
@@ -34,21 +36,21 @@ export default function Voices() {
   }, []);
 
   const updatePitch = (ev) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("pitch", ev.target.value);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pitch', ev.target.value);
       setPitch(ev.target.value);
     }
   };
   const updateRate = (ev) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("rate", ev.target.value);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('rate', ev.target.value);
       setRate(ev.target.value);
     }
   };
 
   const updateVoice = (ev) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("voice", voices[ev.target.value].name);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('voice', voices[ev.target.value].name);
       setVoice(ev.target.value);
 
       if (window.speechSynthesis.speaking) {
@@ -65,7 +67,8 @@ export default function Voices() {
       <select
         className="select select-secondary focus:outline-0 w-full max-w-xs text-primary-focus hover:text-primary rounded-xl"
         onChange={updateVoice}
-        value={voice}>
+        value={voice}
+      >
         <option disabled value="">
           Select your favourite voice
         </option>
@@ -75,7 +78,8 @@ export default function Voices() {
               data-lang={voice.lang}
               data-name={voice.name}
               key={i}
-              value={i}>
+              value={i}
+            >
               {voice.name} ({voice.lang})
             </option>
           );
@@ -112,18 +116,18 @@ export default function Voices() {
           onChange={updateRate}
         />
         <div className="w-full flex justify-between text-xs px-1 text-secondary">
-        <span>|</span>
-        <span>|</span>
-        <span>|</span>
-        <span>|</span>
-        <span>|</span>
-        <span>|</span>
-        <span>|</span>
-        <span>|</span>
-        <span>|</span>
-        <span>|</span>
-        <span>|</span>
-        <span>|</span>
+          <span>|</span>
+          <span>|</span>
+          <span>|</span>
+          <span>|</span>
+          <span>|</span>
+          <span>|</span>
+          <span>|</span>
+          <span>|</span>
+          <span>|</span>
+          <span>|</span>
+          <span>|</span>
+          <span>|</span>
           <span>|</span>
           <span>|</span>
           <span>|</span>

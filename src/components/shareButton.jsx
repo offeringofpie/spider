@@ -42,14 +42,15 @@ const ShareButton = () => {
           </form>
           <h3 className="font-bold text-lg flex justify-center">
             <button
-              className={`text-primary-focus cursor-pointer hover:text-primary h-full pr-1 relative focus:tooltip flex items-center justify-center`}
-              data-tip="copied!"
+              className={`btn btn-dash btn-lg btn-primary cursor-pointer h-full p-2 relative flex items-center justify-center`}
               onClick={copyToClipboard}
             >
-              Click to copy the URL
+                      <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 20 20">
+          <use href="#share" />
+        </svg>
+        Click to copy the URL
             </button>
           </h3>
-          <p className="py-4">Or scan this code</p>
           {state.loaded && (
             <div data-props={post}>
               <hr className="divider border-none" />
