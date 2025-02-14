@@ -1,26 +1,34 @@
 {
-  "name": "next-netlify-starter",
+  "name": "spider",
   "version": "0.5.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "export": "next export"
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "functions:build": "netlify functions:build",
+    "functions:create": "netlify functions:create",
+    "functions:invoke": "netlify functions:invoke",
+    "functions:list": "netlify functions:list",
+    "functions:serve": "netlify functions:serve"
   },
   "dependencies": {
-    "@postlight/mercury-parser": "^2.2.1",
-    "daisyui": "^2.28.0",
-    "next": "^12.1.5",
-    "node-fetch": "^2.6.7",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
+    "@astrojs/react": "^4.2.0",
+    "@postlight/mercury-parser": "^2.2.0",
+    "@tailwindcss/typography": "^0.5.16",
+    "@tailwindcss/vite": "^4.0.6",
+    "@types/react-dom": "^19.0.3",
+    "@types/react": "^19.0.8",
+    "astro": "^5.2.6",
+    "react-dom": "^19.0.0",
+    "react": "^19.0.0",
+    "tailwindcss": "^4.0.6",
     "theme-change": "^2.2.0"
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.7",
-    "autoprefixer": "^10.4.11",
-    "postcss": "^8.4.16",
-    "qrcode": "^1.5.1",
-    "tailwindcss": "^3.1.8"
+    "daisyui": "^5.0.0-beta.8",
+    "netlify-cli": "^18.1.0",
+    "qrcode": "^1.5.1"
   }
 }

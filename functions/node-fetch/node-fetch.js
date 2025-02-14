@@ -19,10 +19,8 @@ const handler = async function (event) {
 
     try {
       const response = await Parser.parse(url.href);
-
       return {
         statusCode: 200,
-
         body: JSON.stringify(response),
       };
     } catch (err) {

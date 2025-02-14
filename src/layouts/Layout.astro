@@ -1,0 +1,91 @@
+---
+import { defaultStore } from '../store/store';
+
+const state = defaultStore.getState();
+let currentTheme = state.theme;
+let currentFont = state.font;
+
+defaultStore.subscribe(() => {
+  const currentState = defaultStore.getState();
+  const theme = currentState.theme;
+  const font = currentState.font;
+  currentTheme = theme;
+  currentFont = font;
+});
+---
+
+<!doctype html>
+<html lang="en" data-theme={currentTheme} data-font={currentFont}>
+  <head>
+    <title>Spider Parser</title>
+    <link rel="icon" href="/favicon.ico" />
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <meta
+      name="description"
+      content="Parse news articles and web pages with ease."
+    />
+    {/* Twitter */}
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:creator" content="jelo" />
+
+    {/* Open Graph */}
+    <meta property="og:url" content="https://spider.jlopes.eu/" />
+    <meta
+      property="og:image"
+      content="https://spider.jlopes.eu/spiderweb.jpg"
+    />
+    <meta property="og:site_name" content="Spider Parser" />
+    <meta property="og:title" content="Spider Parser'" />
+    <meta
+      property="og:description"
+      content="Parse news articles and web pages with ease."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      cross-origin="true"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Almendra:ital,wght@0,400;0,700;1,400&family=Comic+Neue:ital,wght@0,400;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Pinyon+Script&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <slot />
+
+    <script>
+      import { defaultStore } from '../store/store';
+
+      defaultStore.setState({
+        posts: false,
+        loading: false,
+        loaded: false,
+        initialized: true,
+      });
+
+      function updateTheme() {
+        const state = defaultStore.getState();
+        const theme = state.theme;
+        const font = state.font;
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.setAttribute('data-font', font);
+      }
+
+      // Initial update
+      updateTheme();
+
+      // Subscribe to changes
+      defaultStore.subscribe(updateTheme);
+    </script>
+  </body>
+</html>
+
+<style>
+  html,
+  body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+  }
+</style>
