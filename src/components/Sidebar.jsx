@@ -1,9 +1,5 @@
 import { useEffect, useState } from 'react';
-import Voices from './Drawer/Voices';
-import ThemeSwitcher from './ThemeSwitcher';
-import FontSwitcher from './FontSwitcher';
-import QRElem from './QR/index';
-
+import Voices from './Voices';
 export default function Sidebar(props) {
   const [isWindow, setWindow] = useState(false);
   const print = (ev) => {
@@ -36,35 +32,6 @@ export default function Sidebar(props) {
           </div>
         </label>
 
-        <div className="mt-6 prose prose-slate">
-          <h3 className="heading-3">Options</h3>
-          <div className="flex">
-            <ThemeSwitcher />
-            <FontSwitcher onChange={props.onFont} />
-          </div>
-          {props.post && (
-            <div data-props={props.post}>
-              <hr className="divider border-none" />
-              <h3 className="heading-3">Scan for mobile reading</h3>
-              <QRElem url={props.post.url} />
-            </div>
-          )}
-
-          <hr className="divider border-none" />
-          {/* <button
-            className="text-primary-focus hover:text-primary"
-            onClick={print}>
-            <svg aria-hidden="true" className="w-6 h-6" viewBox="0 0 20 20">
-              <use href="#print" />
-            </svg>
-          </button> */}
-          {isWindow ? (
-            <span>
-              <h4 className="heading-4">Text-to-Speech</h4>
-              <Voices />
-            </span>
-          ) : null}
-        </div>
       </div>
     </div>
   );

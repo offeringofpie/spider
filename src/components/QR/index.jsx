@@ -104,7 +104,7 @@ export default function QRElem(props) {
 
   return (
     <div
-      className="max-w-xs flex-none text-primary"
+      className="max-w-xs mx-auto text-primary"
       ref={ref}
       dangerouslySetInnerHTML={{ __html: theSVG }}
       data-url={props.url}

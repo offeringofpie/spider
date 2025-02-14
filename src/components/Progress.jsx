@@ -1,35 +1,31 @@
 import { useState, useEffect, useCallback } from "react";
+
 export default function Progress() {
   const [scrolled, setScrolled] = useState(0);
 
-  const handleScroll = useCallback((ev) => {
-    const scrollPx = document.querySelector(".drawer-content").scrollTop;
-    const winHeightPx =
-      document.querySelector(".drawer-content").scrollHeight -
-      document.querySelector(".drawer-content").clientHeight;
+  const handleScroll = useCallback(() => {
+    const scrollPx = window.scrollY;
+    const winHeightPx = document.documentElement.scrollHeight - document.documentElement.clientHeight;
     const scroll = `${(scrollPx / winHeightPx) * 100}%`;
     setScrolled(scroll);
-  });
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      document
-        .querySelector(".drawer-content")
-        .addEventListener("scroll", handleScroll);
+      window.addEventListener("scroll", handleScroll);
 
       return () => {
-        document
-          .querySelector(".drawer-content")
-          .removeEventListener("scroll", handleScroll);
+        window.removeEventListener("scroll", handleScroll);
       };
     }
-  }, [setScrolled]);
+  }, [handleScroll]);
+
   return (
     <div className="bg-ghost fixed w-full h-1">
       <hr
-        className="drop-shadow-xl bg-primary-focus absolute w-full h-full left-0 top-0 border-none animate-pulse"
+        className="drop-shadow-xl bg-secondary absolute w-full h-full left-0 top-0 border-none animate-pulse"
         style={{
-          width: `${scrolled}`,
+          width: scrolled,
         }}
       />
     </div>

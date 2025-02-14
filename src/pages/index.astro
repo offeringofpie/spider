@@ -3,6 +3,7 @@ import "../styles/global.css";
 import Layout from '../layouts/Layout.astro';
 import Home from '../layouts/Home';
 import Progress from "../components/Progress";
+import Header from "../components/Header";
 import Sprite from "../components/Sprite";
 
 ---
@@ -10,7 +11,8 @@ import Sprite from "../components/Sprite";
 <Layout>
 	<main class="min-h-screen mx-auto text-center">
 		<Progress client:load />
-		<Home client:load />
+		<Header client:only />
+		<Home client:only />
 		<Sprite client:load />
 	</main>
 </Layout>

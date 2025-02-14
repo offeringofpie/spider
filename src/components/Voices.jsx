@@ -9,11 +9,9 @@ const sortByLang = (a, b) => {
 };
 
 export default function Voices() {
-  const [voices, setVoices] = useState(
-    typeof window !== "undefined"
-      ? window.speechSynthesis.getVoices().sort(sortByLang)
-      : []
-  );
+  const [voices, setVoices] = useState(window.speechSynthesis.getVoices().sort(sortByLang));
+  const [post, setPost] = useState(false);
+  
   const [voice, setVoice] = useState(0);
   const [rate, setRate] = useState(1);
   const [pitch, setPitch] = useState(1);
@@ -84,13 +82,13 @@ export default function Voices() {
         })}
       </select>
       <label className="my-4 block">
-        <span>Pitch: {pitch}</span>
+        <h4>Pitch: {pitch}</h4>
         <input
           type="range"
           min="0"
           max="2"
           defaultValue={pitch}
-          className="range range-secondary hover:range-primary range-xs"
+          className="range range-secondary hover:range-primary range-xs w-full"
           step="0.5"
           onChange={updatePitch}
         />
@@ -103,28 +101,29 @@ export default function Voices() {
         </div>
       </label>
       <label className="my-4 block">
-        <span>Rate: {rate}</span>
+        <h4>Rate: {rate}</h4>
         <input
           type="range"
           min="0"
-          max="5"
+          max="2"
           defaultValue={rate}
-          className="range range-secondary hover:range-primary range-xs"
-          step="0.25"
+          className="range range-secondary hover:range-primary range-xs w-full"
+          step="0.1"
           onChange={updateRate}
         />
         <div className="w-full flex justify-between text-xs px-1 text-secondary">
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
+        <span>|</span>
+        <span>|</span>
+        <span>|</span>
+        <span>|</span>
+        <span>|</span>
+        <span>|</span>
+        <span>|</span>
+        <span>|</span>
+        <span>|</span>
+        <span>|</span>
+        <span>|</span>
+        <span>|</span>
           <span>|</span>
           <span>|</span>
           <span>|</span>

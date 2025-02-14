@@ -86,6 +86,9 @@ function useStore<T>(store: Store<T>) {
 interface DefaultState {
   theme: string;
   font: string;
+  posts: any,
+  loading: boolean,
+  loaded: boolean,
   initialized: boolean;
 }
 
@@ -93,6 +96,9 @@ interface DefaultState {
 const defaultStore = new Store<DefaultState>({
   theme: 'abyss',
   font: 'font-mono',
+  posts: false,
+  loading: false,
+  loaded: false,
   initialized: false
 }, 'default-state');
 
