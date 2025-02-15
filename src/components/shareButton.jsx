@@ -33,7 +33,7 @@ const ShareButton = () => {
           <use href="#share" />
         </svg>
       </button>
-      <dialog id="my_modal_2" className="modal">
+      <dialog id="my_modal_2" className="modal modal-bottom sm:modal-middle">
         <div className="modal-box">
           <form method="dialog">
             <button className="text-primary hover:text-primary-focus text-xl rotate-45 p-1.5 absolute top-2 right-2 inline-flex items-center cursor-pointer ease-linear duration-75">

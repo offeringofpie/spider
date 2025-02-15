@@ -36,7 +36,7 @@ const SettingsButton = () => {
           <use href="#spiderweb" />
         </svg>
       </button>
-      <dialog id="settings_modal" className="modal">
+      <dialog id="settings_modal" className="modal modal-bottom sm:modal-middle">
         <div className="modal-box">
           <form method="dialog">
             <button className="text-primary hover:text-primary-focus text-xl rotate-45 p-1.5 absolute top-2 right-2 inline-flex items-center cursor-pointer ease-linear duration-75">
