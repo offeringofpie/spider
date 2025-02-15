@@ -19,7 +19,6 @@ export default function Home() {
     <div
       className={`w-full px-6 mx-auto text-xl max-w-6xl leading-normal text-center`}
     >
-      <div className="prose mx-auto lg:prose-xl flex items-stretch pt-16 pb-6 text-xl leading-normal text-center print:hidden"></div>
       <article className="prose mx-auto lg:prose-xl prose-zinc text-left">
         {state.loaded ? (
           <>
