@@ -36,7 +36,7 @@ const ShareButton = () => {
       <dialog id="my_modal_2" className="modal">
         <div className="modal-box">
           <form method="dialog">
-            <button class="text-primary hover:text-primary-focus text-xl rotate-45 p-1.5 absolute top-2 right-2 inline-flex items-center cursor-pointer ease-linear duration-75">
+            <button className="text-primary hover:text-primary-focus text-xl rotate-45 p-1.5 absolute top-2 right-2 inline-flex items-center cursor-pointer ease-linear duration-75">
               +
             </button>
           </form>
