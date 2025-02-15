@@ -14,6 +14,7 @@
     "functions:serve": "netlify functions:serve"
   },
   "dependencies": {
+    "@astrojs/netlify": "^6.2.0",
     "@astrojs/react": "^4.2.0",
     "@postlight/mercury-parser": "^2.2.0",
     "@tailwindcss/typography": "^0.5.16",
