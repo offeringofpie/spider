@@ -47,9 +47,9 @@ export default function Home() {
               {post.title}
             </h1>
 
-            <div className='flex w-full justify-between'>
-              <div><strong className='text-info'>Read time:</strong> {readTime(post.word_count)}</div>
-              <div>{formatDate(post.date_published)}</div>
+            <div className='flex w-full justify-between flex-wrap'>
+              <h4><strong className='text-info'>Read time:</strong> {readTime(post.word_count)}</h4>
+              <time dateTime={post.date_published}>{formatDate(post.date_published)}</time>
             </div>
 
             {post.lead_image_url &&
