@@ -31,7 +31,6 @@ export default function Home() {
   const [post, setPost] = useState(false);
 
   useEffect(() => {
-    console.log(JSON.parse(state.posts));
     if (state.posts) {
       setPost(JSON.parse(state.posts));
     }
