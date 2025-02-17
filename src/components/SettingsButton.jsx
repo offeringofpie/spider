@@ -36,7 +36,10 @@ const SettingsButton = () => {
           <use href="#spiderweb" />
         </svg>
       </button>
-      <dialog id="settings_modal" className="modal modal-bottom sm:modal-middle">
+      <dialog
+        id="settings_modal"
+        className="modal modal-bottom sm:modal-middle overflow-x-hidden"
+      >
         <div className="modal-box">
           <form method="dialog">
             <button className="text-primary hover:text-primary-focus text-xl rotate-45 p-1.5 absolute top-2 right-2 inline-flex items-center cursor-pointer ease-linear duration-75">
@@ -53,8 +56,14 @@ const SettingsButton = () => {
           <div className="mt-4">
             <hr className="divider border-none my-4" />
             <span>
-              <h4 className="heading-4 my-4">Text-to-Speech</h4>
-              <Voices />
+              <details className="collapse bg-base-200 collapse-arrow">
+                <summary className="collapse-title text-xl font-medium">
+                  Text-to-Speech
+                </summary>
+                <div className="collapse-content">
+                  <Voices />
+                </div>
+              </details>
             </span>
           </div>
         </div>
