@@ -73,7 +73,7 @@ export default function Header(props) {
           loaded: false,
         });
         const res = await fetch(
-          `http://localhost:9999/.netlify/functions/node-fetch?q=${url}`,
+          `/.netlify/functions/node-fetch?q=${url}`,
           {
             headers: { accept: 'Accept: application/json' },
           }
