@@ -48,7 +48,7 @@ export default function Home() {
             </h1>
 
             <div className='flex w-full justify-between flex-wrap'>
-              <h4><strong className='text-info'>Read time:</strong> {readTime(post.word_count)}</h4>
+              <h4>{readTime(post.word_count)} read time</h4>
               <time dateTime={post.date_published}>{formatDate(post.date_published)}</time>
             </div>
 
