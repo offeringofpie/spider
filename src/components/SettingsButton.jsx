@@ -53,19 +53,6 @@ const SettingsButton = () => {
             <ThemeSwitcher />
             <FontSwitcher />
           </div>
-          <div className="mt-4">
-            <hr className="divider border-none my-4" />
-            <span>
-              <details className="collapse bg-base-200 collapse-arrow">
-                <summary className="collapse-title text-xl font-medium">
-                  Text-to-Speech
-                </summary>
-                <div className="collapse-content">
-                  <Voices />
-                </div>
-              </details>
-            </span>
-          </div>
         </div>
         <form method="dialog" className="modal-backdrop">
           <button>close</button>

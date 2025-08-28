@@ -2,6 +2,7 @@
   "name": "spider",
   "version": "0.5.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -14,14 +15,14 @@
     "functions:serve": "netlify functions:serve"
   },
   "dependencies": {
-    "@astrojs/netlify": "^6.2.0",
-    "@astrojs/react": "^4.2.0",
+    "@astrojs/netlify": "^6.5.9",
+    "@astrojs/react": "^4.3.0",
     "@postlight/mercury-parser": "git@github.com:postlight/parser.git",
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.0.6",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "astro": "^5.2.6",
+    "astro": "^5.13.4",
     "node-fetch": "^3.3.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

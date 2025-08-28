@@ -19,40 +19,6 @@ export default function Header(props) {
     }
   }, []);
 
-   const speak = async (ev) => {
-    setPlaying(!playing);
-    if (
-      typeof window !== 'undefined' &&
-      'speechSynthesis' in window &&
-      state.loaded
-    ) {
-      const post = JSON.parse(state.posts);
-      if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
-      } else if (state.posts) {
-        const msg = new SpeechSynthesisUtterance();
-        if (localStorage.getItem('voice')) {
-          let selectedVoice = window.speechSynthesis
-            .getVoices()
-            .filter((voice) => {
-              return voice.name == localStorage.getItem('voice');
-            });
-          msg.voice = selectedVoice[0];
-        }
-        if (localStorage.getItem('rate')) {
-          msg.rate = localStorage.getItem('rate');
-        }
-        if (localStorage.getItem('pitch')) {
-          msg.pitch = localStorage.getItem('pitch');
-        }
-
-        msg.text =
-          post.title + '\n' + post.content.replace(/(<([^>]+)>)/gi, '');
-        window.speechSynthesis.speak(msg);
-      }
-    }
-  };
-
   const isUrl = (string) => {
     try {
       return Boolean(new URL(string));
@@ -117,18 +83,8 @@ export default function Header(props) {
             />
           </div>
         </form>
-        <div className="flex-none h-12 bg-base-300 border-primary border-2 border-l-0 rounded-tr-xl">
+        <div className="flex-none bg-base-300 border-primary border-2 border-l-0 rounded-tr-xl">
           <ShareButton />
-          <button
-            className={`${
-              playing && props.loaded ? 'text-primary' : 'text-primary-focus'
-            } cursor-pointer hover:text-primary h-full pr-1`}
-            onClick={speak}
-          >
-            <svg aria-hidden="true" className="w-6 h-6" viewBox="0 0 20 20">
-              <use href="#mic" />
-            </svg>
-          </button>
         </div>
       </div>
       <SettingsButton />
