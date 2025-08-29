@@ -7,7 +7,6 @@ export default function Header(props) {
   const [value, setValue] = useState('');
   const [state, setState] = useStore(defaultStore);
   const [playing, setPlaying] = useState(false);
-  
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -38,12 +37,9 @@ export default function Header(props) {
           loading: true,
           loaded: false,
         });
-        const res = await fetch(
-          `/.netlify/functions/node-fetch?q=${url}`,
-          {
-            headers: { accept: 'Accept: application/json' },
-          }
-        )
+        const res = await fetch(`/.netlify/functions/node-fetch?q=${url}`, {
+          headers: { accept: 'Accept: application/json' },
+        })
           .then((x) => x.json())
           .then((msg) => {
             setState({
@@ -81,6 +77,11 @@ export default function Header(props) {
               defaultValue={value}
               required
             />
+            <button type="submit" className='absolute block top-0 right-0 text-primary-focus cursor-pointer hover:text-primary h-full pr-2' aria-role="button" aria-label='Submit' title="Submit">
+              <svg aria-hidden="true" className="w-10 h-10 text-primary-focus" viewBox="0 0 512 512">
+                <use href="#eye" />
+              </svg>
+            </button>
           </div>
         </form>
         <div className="flex-none bg-base-300 border-primary border-2 border-l-0 rounded-tr-xl">
