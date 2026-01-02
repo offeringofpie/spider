@@ -10,6 +10,13 @@ export default function Header(props) {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // Check if page is embedded in an iframe
+      const isInIframe = window.self !== window.top;
+
+      if (isInIframe) {
+        return; // Don't render component logic
+      }
+
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('q')) {
         setValue(urlParams.get('q'));
@@ -77,8 +84,18 @@ export default function Header(props) {
               defaultValue={value}
               required
             />
-            <button type="submit" className='absolute block top-0 right-0 text-primary-focus cursor-pointer hover:text-primary h-full pr-2' aria-role="button" aria-label='Submit' title="Submit">
-              <svg aria-hidden="true" className="w-10 h-10 text-primary-focus" viewBox="0 0 512 512">
+            <button
+              type="submit"
+              className="absolute block top-0 right-0 text-primary-focus cursor-pointer hover:text-primary h-full pr-2"
+              aria-role="button"
+              aria-label="Submit"
+              title="Submit"
+            >
+              <svg
+                aria-hidden="true"
+                className="w-10 h-10 text-primary-focus"
+                viewBox="0 0 512 512"
+              >
                 <use href="#eye" />
               </svg>
             </button>
