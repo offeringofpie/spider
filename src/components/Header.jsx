@@ -7,23 +7,27 @@ export default function Header(props) {
   const [value, setValue] = useState('');
   const [state, setState] = useStore(defaultStore);
   const [playing, setPlaying] = useState(false);
+  const [isEmbedded, setIsEmbedded] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Check if page is embedded in an iframe
-      const isInIframe = window.self !== window.top;
+      const embedded = document.documentElement.dataset.embedded === 'true';
+      setIsEmbedded(embedded);
 
-      if (isInIframe) {
-        return; // Don't render component logic
-      }
-
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('q')) {
-        setValue(urlParams.get('q'));
-        fetchData(urlParams.get('q'));
+      if (!embedded) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const q = urlParams.get('q');
+        if (q) {
+          setValue(q);
+          fetchData(q);
+        }
       }
     }
   }, []);
+
+  if (isEmbedded) {
+    return null;
+  }
 
   const isUrl = (string) => {
     try {
@@ -34,17 +38,20 @@ export default function Header(props) {
   };
 
   async function fetchData(e) {
-    let url = typeof e == 'string' ? e : e.target.querySelector('#url').value;
+    let url = typeof e === 'string' ? e : e.target.querySelector('#url').value;
+
     if (typeof e !== 'string') {
       e.preventDefault();
     }
+
     if (isUrl(url)) {
       try {
         setState({
           loading: true,
           loaded: false,
         });
-        const res = await fetch(`/.netlify/functions/node-fetch?q=${url}`, {
+
+        await fetch(`/.netlify/functions/node-fetch?q=${url}`, {
           headers: { accept: 'Accept: application/json' },
         })
           .then((x) => x.json())

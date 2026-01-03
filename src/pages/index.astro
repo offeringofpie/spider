@@ -1,17 +1,22 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Home from '../layouts/Home';
-import Progress from "../components/Progress";
-import Header from "../components/Header";
-import Sprite from "../components/Sprite";
-
+import Progress from '../components/Progress';
+import Header from '../components/Header';
+import Sprite from '../components/Sprite';
 ---
 
 <Layout>
-	<main class="min-h-screen mx-auto text-center">
-		<Progress client:load />
-		<Header client:only />
-		<Home client:only />
-		<Sprite />
-	</main>
+  <main class="min-h-screen mx-auto text-center">
+    <Progress client:load />
+    <Header client:only />
+    <Home client:only />
+    <Sprite />
+  </main>
 </Layout>
+
+<script>
+  if (window.self !== window.top) {
+    document.documentElement.dataset.embedded = 'true';
+  }
+</script>
