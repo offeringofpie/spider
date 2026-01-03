@@ -14,14 +14,14 @@ export default function Header(props) {
       const embedded = document.documentElement.dataset.embedded === 'true';
       setIsEmbedded(embedded);
 
-      if (!embedded) {
-        const urlParams = new URLSearchParams(window.location.search);
-        const q = urlParams.get('q');
-        if (q) {
-          setValue(q);
-          fetchData(q);
-        }
+      // if (!embedded) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const q = urlParams.get('q');
+      if (q) {
+        setValue(q);
+        fetchData(q);
       }
+      // }
     }
   }, []);
 
@@ -68,8 +68,9 @@ export default function Header(props) {
       }
     }
   }
-
-  return (
+  return isEmbedded ? (
+    <header>Hello world</header>
+  ) : (
     <header className="navbar bg-base-100 shadow-sm flex content-center justify-center w-full">
       <div className="flex w-full max-w-6xl p-2 flex-wrap">
         <form onSubmit={fetchData} name="submit" className="flex-1">

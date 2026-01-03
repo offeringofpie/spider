@@ -16,6 +16,13 @@ import Sprite from '../components/Sprite';
 </Layout>
 
 <script>
+  if (import.meta.env.DEV) {
+    // @ts-expect-error
+    window.$RefreshReg$ = () => {};
+    // @ts-expect-error
+    window.$RefreshSig$ = () => () => {};
+  }
+
   if (window.self !== window.top) {
     document.documentElement.dataset.embedded = 'true';
   }
