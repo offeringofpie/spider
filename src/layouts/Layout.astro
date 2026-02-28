@@ -78,10 +78,7 @@ defaultStore.subscribe(() => {
         document.documentElement.setAttribute('data-font', font);
       }
 
-      // Initial update
       updateTheme();
-
-      // Subscribe to changes
       defaultStore.subscribe(updateTheme);
     </script>
   </body>

@@ -10,10 +10,10 @@ export default defineConfig({
   integrations: [react()],
 
   vite: {
-    plugins: [tailwindcss()]
+    plugins: [tailwindcss()],
   },
-
+  output: 'server',
   adapter: netlify({
-    edgeMiddleware: true
-  })
+    edgeMiddleware: true,
+  }),
 });

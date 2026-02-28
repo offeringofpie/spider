@@ -39,12 +39,10 @@ if (q) {
         : `Clean reader view of ${q}`;
       image = articleImage;
     } else {
-      // Fallback if parser fails
       title = `Spider Parser – ${q}`;
       description = `Clean reader view of ${q}`;
     }
   } catch (err) {
-    // Network / function error: fallback meta
     title = `Spider Parser – ${q}`;
     description = `Clean reader view of ${q}`;
   }
