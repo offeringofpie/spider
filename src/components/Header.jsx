@@ -72,9 +72,9 @@ export default function Header(props) {
     <header>Hello world</header>
   ) : (
     <header className="navbar bg-base-100 shadow-sm flex content-center justify-center w-full max-w-4xl mx-auto">
-      <div className="flex w-full max-w-6xl p-2 flex-wrap">
+      <div className="flex w-full max-w-6xl p-2">
         <form onSubmit={fetchData} name="submit" className="flex-1">
-          <div className="relative">
+          <div className="relative flex">
             <div className="flex absolute -left-0.5 items-center pointer-events-none">
               <svg
                 aria-hidden="true"
@@ -94,7 +94,7 @@ export default function Header(props) {
             />
             <button
               type="submit"
-              className="absolute block top-0 right-0 text-primary-focus cursor-pointer hover:text-primary h-full pr-2"
+              className="block bg-base-300 border-2 border-x-0 border-primary top-0 right-0 text-primary-focus cursor-pointer hover:text-primary h-full pt-1 px-2"
               aria-role="button"
               aria-label="Submit"
               title="Submit"
