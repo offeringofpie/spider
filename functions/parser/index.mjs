@@ -157,34 +157,41 @@ export const handler = async function (event) {
         signal: AbortSignal.timeout(15000),
         redirect: 'follow',
       });
-    } catch (err) {
-      if (err.message.includes('429')) {
-        console.warn(
-          `Strategy "${strategyName}" exhausted, trying fallback cascade...`,
-        );
-        for (const name of fallbackChain) {
-          if (name === strategyName) continue;
-          const fallback = strategies.find((s) => s.name === name);
-          if (!fallback) continue;
-          try {
-            const fbFetchUrl = fallback.fetchUrl(url);
-            response = await fetchWithRetry(fbFetchUrl, {
-              headers: fallback.headers,
-              signal: AbortSignal.timeout(15000),
-              redirect: 'follow',
-            });
-            if (response.ok) {
-              fetchUrl = fbFetchUrl;
-              strategyName = `${strategyName}→${name}`;
-              break;
-            }
-          } catch (fbErr) {
-            console.warn(`Fallback "${name}" also failed:`, fbErr.message);
-          }
-        }
-      } else {
-        throw err;
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
+    } catch (error) {
+      console.error('Parsing failed:', error);
+
+      const archiveCandidates = [];
+      const waybackUrl = `https://web.archive.org/web/*/${url.href}`;
+      const archivePhNewest = `https://archive.ph/newest/${url.href}`;
+
+      archiveCandidates.push({
+        label: 'Wayback Machine snapshots',
+        url: waybackUrl,
+      });
+      archiveCandidates.push({
+        label: 'archive.ph (newest)',
+        url: archivePhNewest,
+      });
+
+      return {
+        statusCode: 500,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          error: error.message || 'Unknown error occurred',
+          url: url.href,
+          strategy: selected.name,
+          timestamp: new Date().toISOString(),
+          suggestion:
+            strategy === 'auto'
+              ? 'Content could not be fetched by any strategy.'
+              : 'Tried the requested strategy and fallbacks, all failed.',
+          archive_links: archiveCandidates,
+        }),
+      };
     }
 
     if (!response || !response.ok) {

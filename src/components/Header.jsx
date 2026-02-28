@@ -46,25 +46,40 @@ export default function Header(props) {
 
     if (isUrl(url)) {
       try {
+        setState({ loading: true, loaded: false });
+
+        const res = await fetch(
+          `/.netlify/functions/parser?q=${encodeURIComponent(url)}`,
+          { headers: { accept: 'application/json' } },
+        );
+        const data = await res.json();
+
+        if (res.ok && data.content) {
+          setState({
+            posts: JSON.stringify(data),
+            error: null,
+            loading: false,
+            loaded: true,
+          });
+        } else {
+          setState({
+            posts: null,
+            error: JSON.stringify(data),
+            loading: false,
+            loaded: false,
+          });
+        }
+
+        history.pushState({}, 'New Page', `?q=${encodeURIComponent(url)}`);
+      } catch (err) {
         setState({
-          loading: true,
+          posts: null,
+          error: JSON.stringify({
+            error: 'Failed to reach parser function',
+          }),
+          loading: false,
           loaded: false,
         });
-
-        await fetch(`/.netlify/functions/parser?q=${url}`, {
-          headers: { accept: 'Accept: application/json' },
-        })
-          .then((x) => x.json())
-          .then((msg) => {
-            setState({
-              posts: JSON.stringify(msg),
-              loading: false,
-              loaded: true,
-            });
-            history.pushState({}, 'New Page', `/?q=${url}`);
-          });
-      } catch (err) {
-        console.log(err);
       }
     }
   }
