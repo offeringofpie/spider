@@ -2,25 +2,76 @@ html[data-font='font-fantasy'] * {
   font-family: Luminari, fantasy, 'Almendra';
 }
 html[data-font='font-cursive'] * {
-  font-family: Snell Roundhand, 'Pinyon Script', cursive;
+  font-family: 'Pinyon Script', 'Snell Roundhand', cursive;
 }
+
 html[data-font='font-comic'] * {
-  font-family: Comic Sans MS, Comic Sans, 'Comic Neue', cursive;
+  font-family:
+    Comic Sans MS,
+    Comic Sans,
+    'Comic Neue',
+    cursive;
 }
 html[data-font='font-typewriter'] * {
-  font-family: Courier New, monospace, 'Courier Prime';
+  font-family:
+    Courier New,
+    monospace,
+    'Courier Prime';
 }
 html[data-font='font-sans'] * {
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif,
-    Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    Segoe UI,
+    Roboto,
+    Helvetica Neue,
+    Arial,
+    Noto Sans,
+    sans-serif,
+    Apple Color Emoji,
+    Segoe UI Emoji,
+    Segoe UI Symbol,
+    Noto Color Emoji;
 }
 
 html[data-font='font-mono'] * {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    Liberation Mono, Courier New, monospace;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    Liberation Mono,
+    Courier New,
+    monospace;
 }
 
 html[data-font='font-serif'] * {
-  font-family: ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
+  font-family:
+    ui-serif,
+    Georgia,
+    Cambria,
+    Times New Roman,
+    Times,
+    serif;
+}
+
+html[data-font='font-editorial'] h1,
+html[data-font='font-editorial'] h2,
+html[data-font='font-editorial'] h3 {
+  font-family: 'Playfair Display', 'Times New Roman', 'Georgia', serif;
+}
+html[data-font='font-editorial'] p {
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Roboto',
+    'Helvetica Neue',
+    Arial,
+    'Noto Sans',
+    sans-serif;
 }

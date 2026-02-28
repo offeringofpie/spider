@@ -7,9 +7,9 @@ import Sprite from '../components/Sprite';
 ---
 
 <Layout>
-  <main class="min-h-screen mx-auto text-center">
-    <Progress client:load />
-    <Header client:only />
+  <Progress client:load />
+  <Header client:only />
+  <main class="mx-auto max-w-4xl px-6 py-10">
     <Home client:only />
     <Sprite />
   </main>
