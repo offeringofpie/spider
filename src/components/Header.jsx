@@ -51,7 +51,7 @@ export default function Header(props) {
           loaded: false,
         });
 
-        await fetch(`/.netlify/functions/node-fetch?q=${url}`, {
+        await fetch(`/.netlify/functions/parser?q=${url}`, {
           headers: { accept: 'Accept: application/json' },
         })
           .then((x) => x.json())
