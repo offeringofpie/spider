@@ -1,4 +1,4 @@
-const Parser = require('@postlight/mercury-parser');
+const Parser = require('@jocmp/mercury-parser');
 const fetch = (...args) =>
   import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
@@ -9,36 +9,83 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
-const strategies = {
-  regular: {
-    'Cache-Control': 'no-cache,no-store,max-age=1, must-revalidate',
-    'User-Agent':
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-    Referer: 'https://www.google.com/',
+const strategies = [
+  {
+    name: 'wayback',
+    matches: (url) =>
+      ['tijd.be', 'standaard.be', 'ft.com'].some((d) =>
+        url.hostname.includes(d),
+      ),
+    fetchUrl: (url) => `https://web.archive.org/web/2/${url.href}`,
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    },
   },
-  googlebot: {
-    'user-agent':
-      'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-    accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'accept-language': 'en-US,en;q=0.5',
-    'cache-control': 'no-cache',
+  {
+    name: 'archive',
+    matches: () => false, // manual only via &strategy=archive
+    fetchUrl: (url) => `https://archive.ph/newest/${url.href}`,
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Cache-Control': 'no-cache',
+    },
   },
-
-  facebook: {
-    'user-agent':
-      'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
-    accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'cache-control': 'no-cache',
+  {
+    name: 'googlebot',
+    matches: (url) =>
+      ['.be', '.nl', '.fr', '.de'].some((tld) => url.hostname.endsWith(tld)),
+    fetchUrl: (url) => url.href,
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.5',
+      'Cache-Control': 'no-cache',
+    },
   },
-
-  archive: {
-    accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'accept-language': 'en-US,en;q=0.5',
-    'cache-control': 'no-cache',
+  {
+    name: 'facebook',
+    matches: () => false, // manual only via &strategy=facebook
+    fetchUrl: (url) => url.href,
+    headers: {
+      'User-Agent':
+        'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Cache-Control': 'no-cache',
+    },
   },
-};
+  {
+    name: 'regular',
+    matches: () => true, // catch-all fallback
+    fetchUrl: (url) => url.href,
+    headers: {
+      'Cache-Control': 'no-cache,no-store,max-age=1,must-revalidate',
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+      Referer: 'https://www.google.com/',
+    },
+  },
+];
 
 const parsers = [];
+
+async function fetchWithRetry(fetchUrl, options, retries = 3, backoff = 1000) {
+  for (let i = 0; i < retries; i++) {
+    const response = await fetch(fetchUrl, options);
+    if (response.status !== 429) return response;
+    const retryAfter = response.headers.get('Retry-After');
+    const delay = retryAfter ? parseInt(retryAfter) * 1000 : backoff * 2 ** i;
+    console.warn(
+      `429 received, retrying in ${delay}ms (attempt ${i + 1}/${retries})...`,
+    );
+    await new Promise((res) => setTimeout(res, delay));
+  }
+  throw new Error('HTTP 429: Too Many Requests (retries exhausted)');
+}
 
 export const handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
@@ -80,21 +127,10 @@ export const handler = async function (event) {
     };
   }
 
-  let selectedStrategy = strategy;
-  if (strategy === 'auto') {
-    if (url.hostname.includes('.be') || url.hostname.includes('tijd.be')) {
-      selectedStrategy = 'googlebot';
-    } else if (
-      url.hostname.includes('ft.com') ||
-      url.hostname.includes('wsj.com')
-    ) {
-      selectedStrategy = 'archive';
-    } else {
-      selectedStrategy = 'regular';
-    }
-  }
-
-  const headers = strategies[selectedStrategy] || strategies.googlebot;
+  let selected =
+    strategy === 'auto'
+      ? (strategies.find((s) => s.matches(url)) ?? strategies.at(-1))
+      : (strategies.find((s) => s.name === strategy) ?? strategies.at(-1));
 
   // Add custom parsers if domain matches
   parsers.forEach((parser) => {
@@ -104,21 +140,60 @@ export const handler = async function (event) {
       } catch (error) {
         console.warn(
           `Failed to add parser for ${parser.domain}:`,
-          error.message
+          error.message,
         );
       }
     }
   });
 
-  try {
-    const response = await fetch(url.href, {
-      headers: headers,
-      timeout: 15000,
-      redirect: 'follow',
-    });
+  const fallbackChain = ['wayback', 'archive', 'googlebot', 'regular'];
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  try {
+    let fetchUrl = selected.fetchUrl(url);
+    let strategyName = selected.name;
+    let response;
+
+    try {
+      response = await fetchWithRetry(fetchUrl, {
+        headers: selected.headers,
+        timeout: 15000,
+        redirect: 'follow',
+      });
+    } catch (err) {
+      // Go through fallbacks if 429
+      if (err.message.includes('429')) {
+        console.warn(
+          `Strategy "${strategyName}" exhausted, trying fallback cascade...`,
+        );
+        for (const name of fallbackChain) {
+          if (name === strategyName) continue;
+          const fallback = strategies.find((s) => s.name === name);
+          if (!fallback) continue;
+          try {
+            const fbFetchUrl = fallback.fetchUrl(url);
+            response = await fetchWithRetry(fbFetchUrl, {
+              headers: fallback.headers,
+              timeout: 15000,
+              redirect: 'follow',
+            });
+            if (response.ok) {
+              fetchUrl = fbFetchUrl;
+              strategyName = `${strategyName}→${name}`;
+              break;
+            }
+          } catch (fbErr) {
+            console.warn(`Fallback "${name}" also failed:`, fbErr.message);
+          }
+        }
+      } else {
+        throw err;
+      }
+    }
+
+    if (!response || !response.ok) {
+      throw new Error(
+        `HTTP ${response?.status ?? 'unknown'}: ${response?.statusText ?? 'No response'}`,
+      );
     }
 
     const html = await response.text();
@@ -134,8 +209,8 @@ export const handler = async function (event) {
         ...parsed,
         meta: {
           originalUrl: url.href,
-          strategy: selectedStrategy,
-          userAgent: headers['user-agent'] || 'default',
+          fetchedUrl: fetchUrl,
+          strategy: strategyName,
           contentLength: html.length,
           timestamp: new Date().toISOString(),
         },
@@ -144,21 +219,19 @@ export const handler = async function (event) {
   } catch (error) {
     console.error('Parsing failed:', error);
 
-    const errorResponse = {
-      error: error.message || 'Unknown error occurred',
-      url: url.href,
-      strategy: selectedStrategy,
-      timestamp: new Date().toISOString(),
-      suggestion:
-        selectedStrategy === 'auto'
-          ? 'Try adding &strategy=archive or &strategy=facebook'
-          : 'Try a different strategy parameter',
-    };
-
     return {
       statusCode: 500,
       headers: corsHeaders,
-      body: JSON.stringify(errorResponse),
+      body: JSON.stringify({
+        error: error.message || 'Unknown error occurred',
+        url: url.href,
+        strategy: selected.name,
+        timestamp: new Date().toISOString(),
+        suggestion:
+          strategy === 'auto'
+            ? 'Try adding &strategy=archive'
+            : 'Try a different strategy parameter',
+      }),
     };
   }
 };
