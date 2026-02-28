@@ -4,9 +4,54 @@ import Home from '../layouts/Home';
 import Progress from '../components/Progress';
 import Header from '../components/Header';
 import Sprite from '../components/Sprite';
+
+const q = Astro.url.searchParams.get('q');
+
+let title = 'Spider Parser';
+let description = 'Parse news articles and web pages with ease.';
+let url = Astro.url.href;
+let image = 'https://spider.jlopes.eu/spiderweb.jpg';
+let type = 'website';
+
+if (q) {
+  type = 'article';
+
+  try {
+    const apiUrl = `${Astro.url.origin}/.netlify/functions/parser?q=${encodeURIComponent(
+      q,
+    )}`;
+
+    const res = await fetch(apiUrl);
+    if (res.ok) {
+      const article = await res.json();
+
+      const articleTitle =
+        article.title || article.meta_title || `Parsed: ${q}`;
+
+      const articleDescription =
+        article.dek || article.excerpt || article.description || '';
+
+      const articleImage = article.lead_image_url || article.image || image;
+
+      title = articleTitle;
+      description = articleDescription
+        ? articleDescription.slice(0, 200)
+        : `Clean reader view of ${q}`;
+      image = articleImage;
+    } else {
+      // Fallback if parser fails
+      title = `Spider Parser – ${q}`;
+      description = `Clean reader view of ${q}`;
+    }
+  } catch (err) {
+    // Network / function error: fallback meta
+    title = `Spider Parser – ${q}`;
+    description = `Clean reader view of ${q}`;
+  }
+}
 ---
 
-<Layout>
+<Layout {title} {description} {url} {image} {type}>
   <Progress client:load />
   <Header client:only />
   <main class="mx-auto max-w-4xl px-6 py-10">

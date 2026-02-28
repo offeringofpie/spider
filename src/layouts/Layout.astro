@@ -6,6 +6,14 @@ const state = defaultStore.getState();
 let currentTheme = state.theme;
 let currentFont = state.font;
 
+const {
+  title = 'Spider Parser',
+  description = 'Parse news articles and web pages with ease.',
+  url = 'https://spider.jlopes.eu/',
+  image = 'https://spider.jlopes.eu/spiderweb.jpg',
+  type = 'article',
+} = Astro.props;
+
 defaultStore.subscribe(() => {
   const currentState = defaultStore.getState();
   const theme = currentState.theme;
@@ -18,31 +26,26 @@ defaultStore.subscribe(() => {
 <!doctype html>
 <html lang="en" data-theme={currentTheme} data-font={currentFont}>
   <head>
-    <title>Spider Parser</title>
+    <title>{title}</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="Parse news articles and web pages with ease."
-    />
+
+    <meta name="description" content={description} />
+
     {/* Twitter */}
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:creator" content="jelo" />
 
     {/* Open Graph */}
-    <meta property="og:url" content="https://spider.jlopes.eu/" />
-    <meta
-      property="og:image"
-      content="https://spider.jlopes.eu/spiderweb.jpg"
-    />
+    <meta property="og:type" content={type} />
+    <meta property="og:url" content={url} />
+    <meta property="og:image" content={image} />
     <meta property="og:site_name" content="Spider Parser" />
-    <meta property="og:title" content="Spider Parser'" />
-    <meta
-      property="og:description"
-      content="Parse news articles and web pages with ease."
-    />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       rel="preconnect"
