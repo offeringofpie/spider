@@ -1,6 +1,4 @@
 const Parser = require('@jocmp/mercury-parser');
-const fetch = (...args) =>
-  import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -156,11 +154,10 @@ export const handler = async function (event) {
     try {
       response = await fetchWithRetry(fetchUrl, {
         headers: selected.headers,
-        timeout: 15000,
+        signal: AbortSignal.timeout(15000),
         redirect: 'follow',
       });
     } catch (err) {
-      // Go through fallbacks if 429
       if (err.message.includes('429')) {
         console.warn(
           `Strategy "${strategyName}" exhausted, trying fallback cascade...`,
@@ -173,7 +170,7 @@ export const handler = async function (event) {
             const fbFetchUrl = fallback.fetchUrl(url);
             response = await fetchWithRetry(fbFetchUrl, {
               headers: fallback.headers,
-              timeout: 15000,
+              signal: AbortSignal.timeout(15000),
               redirect: 'follow',
             });
             if (response.ok) {
