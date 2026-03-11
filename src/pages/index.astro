@@ -5,48 +5,15 @@ import Progress from '../components/Progress';
 import Header from '../components/Header';
 import Sprite from '../components/Sprite';
 
-const q = Astro.url.searchParams.get('q');
+// ✅ This tells Astro to build this as a static HTML file at deploy time
+export const prerender = true;
 
-let title = 'Spider Parser';
-let description = 'Parse news articles and web pages with ease.';
-let url = Astro.url.href;
-let image = 'https://spider.jlopes.eu/spiderweb.jpg';
-let type = 'website';
-
-if (q) {
-  type = 'article';
-
-  try {
-    const apiUrl = `${Astro.url.origin}/.netlify/functions/parser?q=${encodeURIComponent(
-      q,
-    )}`;
-
-    const res = await fetch(apiUrl);
-    if (res.ok) {
-      const article = await res.json();
-
-      const articleTitle =
-        article.title || article.meta_title || `Parsed: ${q}`;
-
-      const articleDescription =
-        article.dek || article.excerpt || article.description || '';
-
-      const articleImage = article.lead_image_url || article.image || image;
-
-      title = articleTitle;
-      description = articleDescription
-        ? articleDescription.slice(0, 200)
-        : `Clean reader view of ${q}`;
-      image = articleImage;
-    } else {
-      title = `Spider Parser – ${q}`;
-      description = `Clean reader view of ${q}`;
-    }
-  } catch (err) {
-    title = `Spider Parser – ${q}`;
-    description = `Clean reader view of ${q}`;
-  }
-}
+// Default generic metadata for the App Shell
+const title = 'Spider Parser';
+const description = 'Parse news articles and web pages with ease.';
+const url = Astro.url.href;
+const image = 'https://spider.jlopes.eu/spiderweb.jpg';
+const type = 'website';
 ---
 
 <Layout {title} {description} {url} {image} {type}>
