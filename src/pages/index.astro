@@ -5,15 +5,45 @@ import Progress from '../components/Progress';
 import Header from '../components/Header';
 import Sprite from '../components/Sprite';
 
-// ✅ This tells Astro to build this as a static HTML file at deploy time
-export const prerender = true;
+const q = Astro.url.searchParams.get('q');
+const userAgent = Astro.request.headers.get('user-agent') || '';
 
-// Default generic metadata for the App Shell
-const title = 'Spider Parser';
-const description = 'Parse news articles and web pages with ease.';
-const url = Astro.url.href;
-const image = 'https://spider.jlopes.eu/spiderweb.jpg';
-const type = 'website';
+const isBot =
+  /bot|facebook|twitter|slack|discord|whatsapp|telegram|linkedin|skype/i.test(
+    userAgent,
+  );
+
+let title = 'Spider Parser';
+let description = 'Parse news articles and web pages with ease.';
+let url = Astro.url.href;
+let image = 'https://spider.jlopes.eu/spiderweb.jpg';
+let type = 'website';
+
+if (q && isBot) {
+  type = 'article';
+  try {
+    const apiUrl = `${Astro.url.origin}/.netlify/functions/parser?q=${encodeURIComponent(q)}`;
+    const res = await fetch(apiUrl);
+
+    if (res.ok) {
+      const article = await res.json();
+
+      title = article.title || article.meta_title || `Parsed: ${q}`;
+
+      const articleDescription =
+        article.dek || article.excerpt || article.description || '';
+      description = articleDescription
+        ? articleDescription.slice(0, 200)
+        : `Clean reader view of ${q}`;
+
+      image = article.lead_image_url || article.image || image;
+    }
+  } catch (err) {
+    console.error('Failed to fetch OG data:', err);
+    title = `Spider Parser – ${q}`;
+    description = `Clean reader view of ${q}`;
+  }
+}
 ---
 
 <Layout {title} {description} {url} {image} {type}>
