@@ -4,6 +4,8 @@ import Home from '../layouts/Home';
 import Progress from '../components/Progress';
 import Header from '../components/Header';
 import Sprite from '../components/Sprite';
+import Fab from '../components/Fab';
+import Translate from '../components/Translate';
 
 const q = Astro.url.searchParams.get('q');
 const userAgent = Astro.request.headers.get('user-agent') || '';
@@ -49,20 +51,27 @@ if (q && isBot) {
 <Layout {title} {description} {url} {image} {type}>
   <Progress client:load />
   <Header client:only />
+  <Translate client:only />
+
   <main class="mx-auto max-w-4xl px-6 py-10">
     <Home client:only />
+    <Fab client:only />
     <Sprite />
   </main>
 </Layout>
 
-<script>
-  if (import.meta.env.DEV) {
-    // @ts-expect-error
-    window.$RefreshReg$ = () => {};
-    // @ts-expect-error
-    window.$RefreshSig$ = () => () => {};
+<script is:inline>
+  if (typeof window !== 'undefined') {
+    window.$RefreshReg$ = window.$RefreshReg$ || function () {};
+    window.$RefreshSig$ =
+      window.$RefreshSig$ ||
+      function () {
+        return function () {};
+      };
   }
+</script>
 
+<script>
   if (window.self !== window.top) {
     document.documentElement.dataset.embedded = 'true';
   }

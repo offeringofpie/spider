@@ -7,7 +7,7 @@ class Store<T> {
 
   constructor(initialState: T, key: string) {
     this.key = key;
-    
+
     if (typeof window !== 'undefined' && window.localStorage) {
       const storedState = localStorage.getItem(this.key);
       if (storedState) {
@@ -59,13 +59,13 @@ class Store<T> {
     this.subscribers.push(callback);
     // Return an unsubscribe function
     return () => {
-      this.subscribers = this.subscribers.filter(cb => cb !== callback);
+      this.subscribers = this.subscribers.filter((cb) => cb !== callback);
     };
   }
 
   // Notify all subscribers of state change
   private notifySubscribers() {
-    this.subscribers.forEach(callback => callback(this.state));
+    this.subscribers.forEach((callback) => callback(this.state));
   }
 }
 
@@ -75,7 +75,7 @@ function useStore<T>(store: Store<T>) {
 
   useEffect(() => {
     // Subscribe to store changes and update local state
-    return store.subscribe(newState => setState(newState));
+    return store.subscribe((newState) => setState(newState));
   }, [store]);
 
   // Return current state and setState function
@@ -86,20 +86,25 @@ function useStore<T>(store: Store<T>) {
 interface DefaultState {
   theme: string;
   font: string;
-  posts: any,
-  loading: boolean,
-  loaded: boolean,
+  posts: any;
+  loading: boolean;
+  loaded: boolean;
   initialized: boolean;
+  showTranslateBar: boolean;
 }
 
 // Create a default store instance
-const defaultStore = new Store<DefaultState>({
-  theme: 'abyss',
-  font: 'font-mono',
-  posts: false,
-  loading: false,
-  loaded: false,
-  initialized: false
-}, 'default-state');
+const defaultStore = new Store<DefaultState>(
+  {
+    theme: 'abyss',
+    font: 'font-mono',
+    posts: false,
+    loading: false,
+    loaded: false,
+    initialized: false,
+    showTranslateBar: false,
+  },
+  'default-state',
+);
 
 export { defaultStore, useStore };

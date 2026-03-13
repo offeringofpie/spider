@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
-import ShareButton from '../components/shareButton';
 import SettingsButton from './SettingsButton';
 
 export default function Header(props) {
@@ -14,14 +13,12 @@ export default function Header(props) {
       const embedded = document.documentElement.dataset.embedded === 'true';
       setIsEmbedded(embedded);
 
-      // if (!embedded) {
       const urlParams = new URLSearchParams(window.location.search);
       const q = urlParams.get('q');
       if (q) {
         setValue(q);
         fetchData(q);
       }
-      // }
     }
   }, []);
 
@@ -109,8 +106,7 @@ export default function Header(props) {
             />
             <button
               type="submit"
-              className="block bg-base-300 border-2 border-x-0 border-primary top-0 right-0 text-primary-focus cursor-pointer hover:text-primary h-full px-2"
-              aria-role="button"
+              className="block bg-base-300 border-2 border-l-0 rounded-tr-xl border-primary top-0 right-0 text-primary-focus cursor-pointer hover:text-primary h-full px-2"
               aria-label="Submit"
               title="Submit"
             >
@@ -124,9 +120,6 @@ export default function Header(props) {
             </button>
           </div>
         </form>
-        <div className="flex-none bg-base-300 border-primary border-2 border-l-0 rounded-tr-xl">
-          <ShareButton />
-        </div>
       </div>
       <SettingsButton />
     </header>

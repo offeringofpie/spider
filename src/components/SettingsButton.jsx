@@ -16,21 +16,13 @@ const SettingsButton = () => {
     }
   }, [state.posts]);
 
-  const copyToClipboard = () => {
-    navigator.clipboard
-      .writeText(window.location.href)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      })
-      .catch((err) => console.error('Failed to copy: ', err));
-  };
-
   return (
     <>
       <button
         onClick={() => document.getElementById('settings_modal').showModal()}
         className={`text-primary-focus cursor-pointer hover:text-primary h-full pr-1 relative`}
+        title="Settings"
+        aria-label="Settings"
       >
         <svg aria-hidden="true" className="w-10 h-10" viewBox="0 0 24 24">
           <use href="#spiderweb" />
@@ -42,16 +34,29 @@ const SettingsButton = () => {
       >
         <div className="modal-box">
           <form method="dialog">
-            <button className="text-primary hover:text-primary-focus text-xl rotate-45 p-1.5 absolute top-2 right-2 inline-flex items-center cursor-pointer ease-linear duration-75">
+            <button
+              className="text-primary hover:text-primary-focus text-xl rotate-45 p-1.5 absolute top-2 right-2 inline-flex items-center cursor-pointer ease-linear duration-75"
+              aria-label="Close settings"
+            >
               +
             </button>
           </form>
-          <h3 className="font-bold text-lg flex justify-center mb-3">
-            Theme and Font
+
+          <h3 className="font-bold text-lg flex justify-center mb-4">
+            Appearance
           </h3>
-          <div className="flex flex-1">
+          <div className="flex flex-1 justify-center mb-6">
             <ThemeSwitcher />
             <FontSwitcher />
+          </div>
+
+          <hr className="border-base-300 my-6" />
+
+          <h3 className="font-bold text-lg flex justify-center mb-4">
+            Text to Speech Settings
+          </h3>
+          <div className="mb-2 px-4">
+            <Voices />
           </div>
         </div>
         <form method="dialog" className="modal-backdrop">
