@@ -91,6 +91,8 @@ interface DefaultState {
   loaded: boolean;
   initialized: boolean;
   showTranslateBar: boolean;
+  textSize: string;
+  lineHeight: string;
 }
 
 // Create a default store instance
@@ -103,6 +105,8 @@ const defaultStore = new Store<DefaultState>(
     loaded: false,
     initialized: false,
     showTranslateBar: false,
+    textSize: 'text-lg',
+    lineHeight: 'leading-relaxed',
   },
   'default-state',
 );

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
 
 import ThemeSwitcher from './ThemeSwitcher';
 import FontSwitcher from './FontSwitcher';
+import TextSettings from './TextSettings';
 import Voices from './Voices';
 
 const SettingsButton = () => {
@@ -48,6 +49,10 @@ const SettingsButton = () => {
           <div className="flex flex-1 justify-center mb-6">
             <ThemeSwitcher />
             <FontSwitcher />
+          </div>
+
+          <div className="flex flex-1 justify-center mb-6">
+            <TextSettings />
           </div>
 
           <hr className="border-base-300 my-6" />

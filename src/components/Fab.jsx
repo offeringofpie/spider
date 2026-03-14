@@ -7,6 +7,7 @@ export default function Fab() {
   const [copied, setCopied] = useState(false);
 
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const synthRef = useRef(null);
   const fabRef = useRef(null);
 
@@ -50,51 +51,108 @@ export default function Fab() {
       .catch((err) => console.error('Failed to copy: ', err));
   };
 
+  const cleanUpHighlights = () => {
+    document.querySelectorAll('.tts-highlight').forEach((el) => {
+      el.classList.remove(
+        'bg-primary/20',
+        'tts-highlight',
+        'rounded-md',
+        'transition-colors',
+        'duration-300',
+      );
+    });
+  };
+
   const toggleSpeech = () => {
     if (!synthRef.current) return;
+
+    if (isSpeaking && !isPaused) {
+      synthRef.current.pause();
+      setIsPaused(true);
+      return;
+    }
+
+    if (isSpeaking && isPaused) {
+      synthRef.current.resume();
+      setIsPaused(false);
+      return;
+    }
+
     if (isSpeaking) {
       synthRef.current.cancel();
       setIsSpeaking(false);
+      cleanUpHighlights();
       return;
     }
-    const titleElem = document.querySelector('article h1');
-    const contentElem = document.querySelector('article .prose');
 
-    let textToRead = '';
+    const article = document.querySelector('article');
+    if (!article) return;
 
-    if (titleElem && contentElem) {
-      textToRead = `${titleElem.innerText}. ${contentElem.innerText}`;
-    } else if (state.posts) {
-      try {
-        const post = JSON.parse(state.posts);
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = post.content;
-        textToRead = `${post.title}. ${tempDiv.innerText || tempDiv.textContent || ''}`;
-      } catch (e) {
-        console.error('Failed to parse post for speech fallback', e);
-      }
-    }
+    const elements = Array.from(
+      article.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, blockquote'),
+    ).filter((el) => el.innerText && el.innerText.trim().length > 0);
 
-    if (!textToRead) return;
-
-    const utterance = new SpeechSynthesisUtterance(textToRead);
+    if (elements.length === 0) return;
 
     const voiceName = localStorage.getItem('voice');
     const voices = synthRef.current.getVoices();
+    const selectedVoice = voiceName
+      ? voices.find((v) => v.name === voiceName)
+      : null;
+    const rate = parseFloat(localStorage.getItem('rate') || '1');
+    const pitch = parseFloat(localStorage.getItem('pitch') || '1');
 
-    if (voiceName) {
-      const selectedVoice = voices.find((v) => v.name === voiceName);
-      if (selectedVoice) utterance.voice = selectedVoice;
-    }
-
-    utterance.rate = parseFloat(localStorage.getItem('rate') || '1');
-    utterance.pitch = parseFloat(localStorage.getItem('pitch') || '1');
-
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false); // Safety catch
-
-    synthRef.current.speak(utterance);
     setIsSpeaking(true);
+
+    elements.forEach((el, index) => {
+      const textToRead = el.innerText;
+      const utterance = new SpeechSynthesisUtterance(textToRead);
+
+      if (selectedVoice) utterance.voice = selectedVoice;
+      utterance.rate = rate;
+      utterance.pitch = pitch;
+
+      utterance.onstart = () => {
+        cleanUpHighlights();
+
+        el.classList.add(
+          'bg-primary/20',
+          'tts-highlight',
+          'rounded-md',
+          'transition-colors',
+          'duration-300',
+        );
+
+        const rect = el.getBoundingClientRect();
+        const isInViewport =
+          rect.top >= 0 &&
+          rect.bottom <=
+            (window.innerHeight || document.documentElement.clientHeight);
+
+        if (!isInViewport) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      };
+
+      utterance.onend = () => {
+        if (index === elements.length - 1) {
+          setIsSpeaking(false);
+          cleanUpHighlights();
+        }
+      };
+
+      utterance.onerror = (e) => {
+        if (e.error !== 'canceled') {
+          console.error('Speech synthesis error:', e);
+        }
+        if (index === elements.length - 1) {
+          setIsSpeaking(false);
+          cleanUpHighlights();
+        }
+      };
+
+      synthRef.current.speak(utterance);
+    });
   };
 
   const toggleTranslateBar = () => {
@@ -157,27 +215,68 @@ export default function Fab() {
           </div>
         </button>
 
-        <button
-          onClick={toggleSpeech}
-          tabIndex={menuTabIndex}
-          aria-label={isSpeaking ? 'Stop Reading Aloud' : 'Read Article Aloud'}
-          className="btn bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14"
-        >
-          <span className="text-sm font-medium">
-            {isSpeaking ? 'Stop Reading' : 'Text-to-Speech'}
-          </span>
-          <div
-            className={`${isSpeaking ? 'bg-error/10 text-error' : 'bg-secondary/10 text-secondary'} rounded-full p-2`}
+        {!isSpeaking ? (
+          <button
+            onClick={toggleSpeech}
+            tabIndex={menuTabIndex}
+            aria-label="Read Article Aloud"
+            className="btn bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14 shadow-sm"
           >
-            {isSpeaking ? (
-              <span>◻️</span>
-            ) : (
+            <span className="text-sm font-medium">Text-to-Speech</span>
+            <div className="bg-secondary/10 text-secondary rounded-full p-2">
               <svg aria-hidden="true" className="w-5 h-5" viewBox="0 0 32 32">
                 <use href="#mic" />
               </svg>
-            )}
+            </div>
+          </button>
+        ) : (
+          <div className="bg-base-100 text-base-content rounded-full flex items-center gap-2 pl-5 pr-2 h-14 shadow-sm pointer-events-auto">
+            <span className="text-sm font-medium pr-2">
+              {isPaused ? 'Paused' : 'Reading'}
+            </span>
+
+            <button
+              onClick={toggleSpeech}
+              tabIndex={menuTabIndex}
+              aria-label={isPaused ? 'Resume Reading' : 'Pause Reading'}
+              className="btn btn-circle btn-sm bg-secondary/10 text-secondary hover:bg-secondary/20 border-none h-10 w-10 flex items-center justify-center"
+            >
+              {isPaused ? (
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-5 h-5 ml-0.5"
+                >
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              ) : (
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                </svg>
+              )}
+            </button>
+
+            <button
+              onClick={() => {
+                synthRef.current.cancel();
+                setIsSpeaking(false);
+                setIsPaused(false);
+                cleanUpHighlights();
+              }}
+              tabIndex={menuTabIndex}
+              aria-label="Stop Reading"
+              className="btn btn-circle btn-sm bg-error/10 text-error hover:bg-error/20 border-none h-10 w-10 flex items-center justify-center"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                <path d="M6 6h12v12H6z" />
+              </svg>
+            </button>
           </div>
-        </button>
+        )}
       </div>
 
       <button
@@ -189,7 +288,7 @@ export default function Fab() {
       >
         <svg
           aria-hidden="true"
-          className={`w-6 h-6 transition-transform duration-300 ease-in-out ${isOpen ? 'rotate-[135deg]' : 'rotate-0'}`}
+          className={`w-6 h-6 transition-transform duration-300 ease-in-out ${isOpen ? 'rotate-135' : 'rotate-0'}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
