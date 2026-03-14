@@ -32,7 +32,6 @@ export default function Home() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // success case
     if (state.posts) {
       try {
         setPost(JSON.parse(state.posts));
@@ -44,7 +43,6 @@ export default function Home() {
       setPost(null);
     }
 
-    // error payload from store (stringified JSON)
     if (state.error) {
       try {
         setError(JSON.parse(state.error));
@@ -52,14 +50,12 @@ export default function Home() {
         setError({ error: 'Unknown error format' });
       }
     } else if (!state.posts) {
-      // no posts and no explicit error
       setError(null);
     }
   }, [state.posts, state.error]);
 
   const isLoaded = state.loaded && post;
 
-  // Error fallback with archive links
   if (error && !isLoaded && !state.loading) {
     const links = error.archive_links || [];
 
@@ -105,12 +101,10 @@ export default function Home() {
       <article className="text-left">
         {isLoaded && (
           <>
-            {/* Title */}
             <h1 className="font-semibold tracking-tight text-3xl md:text-4xl text-info mb-5">
               {post.title}
             </h1>
 
-            {/* Meta row – simple text, no bar */}
             <div className="mb-6 flex flex-wrap items-center justify-between text-sm text-slate-300">
               {post.word_count && <p>{readTime(post.word_count)} read time</p>}
               {post.date_published && (
@@ -120,7 +114,6 @@ export default function Home() {
               )}
             </div>
 
-            {/* Lead image if not already in content */}
             {post.lead_image_url &&
               !(
                 post.content.substring(0, 500).includes('<img') ||
@@ -132,23 +125,16 @@ export default function Home() {
                   className="mb-8 w-full rounded-xl border border-slate-700 shadow-md"
                 />
               )}
-
-            {/* Article body */}
             <div
-              className="
-                prose prose-invert max-w-none
-                text-base md:text-lg leading-relaxed
-                prose-headings:font-semibold
+              className={`prose prose-invert max-w-none ${state.textSize} ${state.lineHeight}                 prose-headings:font-semibold
                 prose-headings:tracking-tight
                 prose-p:my-4
-                prose-a:text-info prose-a:underline prose-a:underline-offset-2
-              "
+                prose-a:text-info prose-a:underline prose-a:underline-offset-2`}
               dangerouslySetInnerHTML={{ __html: post.content }}
             />
           </>
         )}
 
-        {/* Skeleton loading state */}
         {state.loading && (
           <div className="mt-4 flex w-full max-w-2xl flex-col gap-4 mx-auto py-6">
             <div className="skeleton bg-info h-6 w-full"></div>
