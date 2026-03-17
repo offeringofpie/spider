@@ -14,8 +14,8 @@ const TextSettings = () => {
     <div className="flex w-full gap-4 mb-2">
       <div className="flex flex-col gap-2 flex-1 w-1/2">
         <label className="text-center tracking-wider">Text Size</label>
-        <div className="join rounded-xl w-full flex h-12">
-          {textSizes.map((size) => {
+        <div className="join w-full flex h-12">
+          {textSizes.map((size, index) => {
             const isActive =
               state.textSize === size.value ||
               (!state.textSize && size.value === 'text-lg');
@@ -25,6 +25,8 @@ const TextSettings = () => {
                 key={size.value}
                 onClick={() => setState({ textSize: size.value })}
                 className={`btn join-item flex-1 focus:outline-0 text-xs h-full min-h-0 ${
+                  index === 0 ? '!rounded-l-xl' : ''
+                } ${index === textSizes.length - 1 ? '!rounded-r-xl' : ''} ${
                   isActive
                     ? 'bg-secondary text-primary-content border-secondary hover:bg-primary-focus'
                     : 'bg-base-300 text-primary-focus hover:text-primary hover:bg-base-200 border-secondary/70 hover:border-secondary'

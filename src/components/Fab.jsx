@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { defaultStore, useStore } from '../store/store';
+import SettingsButton from './SettingsButton';
 
 export default function Fab() {
   const [isOpen, setIsOpen] = useState(false);
   const [state, setState] = useStore(defaultStore);
   const [copied, setCopied] = useState(false);
+  const [isEmbedded, setIsEmbedded] = useState(false);
 
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -14,6 +16,7 @@ export default function Fab() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       synthRef.current = window.speechSynthesis;
+      setIsEmbedded(document.documentElement.dataset.embedded === 'true');
     }
   }, []);
 
@@ -172,13 +175,14 @@ export default function Fab() {
       <div
         id="fab-menu"
         aria-hidden={!isOpen}
-        className={`flex flex-col items-end gap-3 transition-all duration-300 origin-bottom ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 translate-y-4 pointer-events-none'}`}
+        className={`flex flex-col items-end gap-1 transition-all duration-300 origin-bottom ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 translate-y-4 pointer-events-none'}`}
       >
+        {isEmbedded && <SettingsButton variant="fab" tabIndex={menuTabIndex} />}
         <button
           onClick={copyToClipboard}
           tabIndex={menuTabIndex}
           aria-label="Share Article"
-          className="btn bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14"
+          className="bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14"
         >
           <span className="text-sm font-medium">
             {copied ? 'Link Copied!' : 'Share'}
@@ -195,12 +199,11 @@ export default function Fab() {
             </svg>
           </div>
         </button>
-
         <button
           onClick={toggleTranslateBar}
           tabIndex={menuTabIndex}
           aria-label="Translate Article"
-          className="btn bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14"
+          className="bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14"
         >
           <span className="text-sm font-medium">Translate</span>
           <div className="bg-primary/10 text-primary rounded-full p-2">
@@ -214,13 +217,12 @@ export default function Fab() {
             </svg>
           </div>
         </button>
-
         {!isSpeaking ? (
           <button
             onClick={toggleSpeech}
             tabIndex={menuTabIndex}
             aria-label="Read Article Aloud"
-            className="btn bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14 shadow-sm"
+            className="bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14 shadow-sm"
           >
             <span className="text-sm font-medium">Text-to-Speech</span>
             <div className="bg-secondary/10 text-secondary rounded-full p-2">
@@ -239,7 +241,7 @@ export default function Fab() {
               onClick={toggleSpeech}
               tabIndex={menuTabIndex}
               aria-label={isPaused ? 'Resume Reading' : 'Pause Reading'}
-              className="btn btn-circle btn-sm bg-secondary/10 text-secondary hover:bg-secondary/20 border-none h-10 w-10 flex items-center justify-center"
+              className="btn-circle btn-sm bg-secondary/10 text-secondary hover:bg-secondary/20 border-none h-10 w-10 flex items-center justify-center"
             >
               {isPaused ? (
                 <svg
@@ -247,7 +249,7 @@ export default function Fab() {
                   fill="currentColor"
                   className="w-5 h-5 ml-0.5"
                 >
-                  <path d="M8 5v14l11-7z" />
+                  <use href="#play" />
                 </svg>
               ) : (
                 <svg
@@ -255,7 +257,7 @@ export default function Fab() {
                   fill="currentColor"
                   className="w-5 h-5"
                 >
-                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                  <use href="#pause" />
                 </svg>
               )}
             </button>
@@ -272,7 +274,7 @@ export default function Fab() {
               className="btn btn-circle btn-sm bg-error/10 text-error hover:bg-error/20 border-none h-10 w-10 flex items-center justify-center"
             >
               <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                <path d="M6 6h12v12H6z" />
+                <use href="#stop" />
               </svg>
             </button>
           </div>
