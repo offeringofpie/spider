@@ -54,6 +54,40 @@ export default function Fab() {
       .catch((err) => console.error('Failed to copy: ', err));
   };
 
+  const handleShare = async () => {
+    let title = document.title;
+    let text = '';
+
+    if (state.posts) {
+      try {
+        const article = JSON.parse(state.posts);
+        title = article.title || document.title;
+        text = article.excerpt || article.description || '';
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: title,
+          text: text,
+          url: window.location.href,
+        });
+
+        setIsOpen(false);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error(err);
+          copyToClipboard();
+        }
+      }
+    } else {
+      copyToClipboard();
+    }
+  };
+
   const cleanUpHighlights = () => {
     document.querySelectorAll('.tts-highlight').forEach((el) => {
       el.classList.remove(
@@ -179,7 +213,7 @@ export default function Fab() {
       >
         {isEmbedded && <SettingsButton variant="fab" tabIndex={menuTabIndex} />}
         <button
-          onClick={copyToClipboard}
+          onClick={handleShare}
           tabIndex={menuTabIndex}
           aria-label="Share Article"
           className="bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14"
