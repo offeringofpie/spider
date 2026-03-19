@@ -90,6 +90,7 @@ interface DefaultState {
   loading: boolean;
   loaded: boolean;
   initialized: boolean;
+  isSpeaking: boolean;
   showTranslateBar: boolean;
   showSettings: boolean;
   textSize: string;
@@ -105,6 +106,7 @@ const defaultStore = new Store<DefaultState>(
     loading: false,
     loaded: false,
     initialized: false,
+    isSpeaking: false,
     showTranslateBar: false,
     showSettings: false,
     textSize: 'text-lg',

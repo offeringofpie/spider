@@ -30,16 +30,16 @@ export default function Settings() {
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col md:flex-row w-full gap-x-6 gap-y-4 md:items-end">
-              <div className="flex flex-col gap-2 flex-1">
+            <div className="flex flex-col md:flex-row w-full gap-x-6 gap-y-4">
+              <div className="flex flex-col gap-2 flex-1 h-12">
                 <h3 class="text-center tracking-wider">Appearance</h3>
-                <div className="flex w-full h-12 md:mb-2 *:flex-1 *:min-w-0">
+                <div className="flex w-full h-12 *:flex-1 *:min-w-0">
                   <ThemeSwitcher />
                   <FontSwitcher />
                 </div>
               </div>
 
-              <div className="w-full md:w-2/3">
+              <div className="w-full md:w-2/3 items-start">
                 <TextSettings />
               </div>
             </div>

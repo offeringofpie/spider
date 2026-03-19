@@ -8,7 +8,6 @@ export default function Fab() {
   const [copied, setCopied] = useState(false);
   const [isEmbedded, setIsEmbedded] = useState(false);
 
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const synthRef = useRef(null);
   const fabRef = useRef(null);
@@ -107,21 +106,21 @@ export default function Fab() {
   const toggleSpeech = () => {
     if (!synthRef.current) return;
 
-    if (isSpeaking && !isPaused) {
+    if (state.isSpeaking && !isPaused) {
       synthRef.current.pause();
       setIsPaused(true);
       return;
     }
 
-    if (isSpeaking && isPaused) {
+    if (state.isSpeaking && isPaused) {
       synthRef.current.resume();
       setIsPaused(false);
       return;
     }
 
-    if (isSpeaking) {
+    if (state.isSpeaking) {
       synthRef.current.cancel();
-      setIsSpeaking(false);
+      setState({ isSpeaking: false });
       cleanUpHighlights();
       return;
     }
@@ -143,7 +142,7 @@ export default function Fab() {
     const rate = parseFloat(localStorage.getItem('rate') || '1');
     const pitch = parseFloat(localStorage.getItem('pitch') || '1');
 
-    setIsSpeaking(true);
+    setState({ isSpeaking: true });
 
     elements.forEach((el, index) => {
       const textToRead = el.innerText;
@@ -177,7 +176,7 @@ export default function Fab() {
 
       utterance.onend = () => {
         if (index === elements.length - 1) {
-          setIsSpeaking(false);
+          setState({ isSpeaking: false });
           cleanUpHighlights();
         }
       };
@@ -187,7 +186,7 @@ export default function Fab() {
           console.error('Speech synthesis error:', e);
         }
         if (index === elements.length - 1) {
-          setIsSpeaking(false);
+          setState({ isSpeaking: false });
           cleanUpHighlights();
         }
       };
@@ -222,7 +221,7 @@ export default function Fab() {
           aria-label="Share Article"
           className="bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14"
         >
-          <span className="text-sm font-medium">
+          <span className="text-sm font-medium" aria-live="polite">
             {copied ? 'Link Copied!' : 'Share'}
           </span>
           <div
@@ -255,7 +254,7 @@ export default function Fab() {
             </svg>
           </div>
         </button>
-        {!isSpeaking ? (
+        {!state.isSpeaking ? (
           <button
             onClick={toggleSpeech}
             tabIndex={menuTabIndex}
@@ -271,7 +270,7 @@ export default function Fab() {
           </button>
         ) : (
           <div className="bg-base-100 text-base-content rounded-full flex items-center gap-2 pl-5 pr-2 h-14 shadow-sm pointer-events-auto">
-            <span className="text-sm font-medium pr-2">
+            <span className="text-sm font-medium pr-2" aria-live="polite">
               {isPaused ? 'Paused' : 'Reading'}
             </span>
 
@@ -303,7 +302,7 @@ export default function Fab() {
             <button
               onClick={() => {
                 synthRef.current.cancel();
-                setIsSpeaking(false);
+                setState({ isSpeaking: false });
                 setIsPaused(false);
                 cleanUpHighlights();
               }}
@@ -324,7 +323,7 @@ export default function Fab() {
         aria-expanded={isOpen}
         aria-controls="fab-menu"
         aria-label={isOpen ? 'Close actions menu' : 'Open actions menu'}
-        className="btn btn-circle bg-primary text-primary-content hover:bg-primary-focus border-none h-10 w-10"
+        className="btn btn-circle bg-primary text-primary-content hover:bg-secondary focus:bg-secondary border-none h-10 w-10"
       >
         <svg
           aria-hidden="true"

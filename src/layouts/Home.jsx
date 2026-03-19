@@ -130,6 +130,7 @@ export default function Home() {
             <TOC htmlContent={post.content} />
             <div
               id="article-content"
+              aria-live={state.isSpeaking ? 'polite' : 'off'}
               className={`prose prose-invert max-w-none ${state.textSize} ${state.lineHeight}                 
                 prose-headings:font-semibold
                 prose-headings:tracking-tight
