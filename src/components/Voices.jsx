@@ -93,14 +93,14 @@ export default function Voices() {
   };
 
   return (
-    <div>
-      <div className="mb-4">
+    <div className="flex flex-col gap-6 mb-4">
+      <div className="w-full">
         <label htmlFor="voice-select" className="sr-only">
           Select voice language
         </label>
         <select
           id="voice-select"
-          className="select select-secondary focus:outline-0 w-full max-w-xs text-primary-focus hover:text-primary rounded-xl"
+          className="select select-secondary focus:outline-0 w-full text-primary-focus hover:text-primary rounded-xl cursor-pointer"
           onChange={updateVoice}
           value={voice}
         >
@@ -117,71 +117,73 @@ export default function Voices() {
         </select>
       </div>
 
-      <div className="my-4 block">
-        <label htmlFor="pitch-slider" className="font-medium block mb-2">
-          Pitch: {pitch}
-        </label>
-        <input
-          id="pitch-slider"
-          type="range"
-          min="0"
-          max="2"
-          value={pitch}
-          className="range range-secondary hover:range-primary range-xs w-full"
-          step="0.5"
-          onChange={updatePitch}
-        />
-        <div
-          className="w-full flex justify-between text-xs px-1 text-secondary"
-          aria-hidden="true"
-        >
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
+      <div className="flex flex-row w-full gap-4 md:gap-6">
+        <div className="flex-1 min-w-0">
+          <label htmlFor="pitch-slider" className="font-medium block mb-2">
+            Pitch: {pitch}
+          </label>
+          <input
+            id="pitch-slider"
+            type="range"
+            min="0"
+            max="2"
+            value={pitch}
+            className="range range-secondary hover:range-primary range-xs w-full"
+            step="0.5"
+            onChange={updatePitch}
+          />
+          <div
+            className="w-full flex justify-between text-xs px-1 text-secondary"
+            aria-hidden="true"
+          >
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+          </div>
         </div>
-      </div>
 
-      <div className="my-4 block">
-        <label htmlFor="rate-slider" className="font-medium block mb-2">
-          Rate: {rate}
-        </label>
-        <input
-          id="rate-slider"
-          type="range"
-          min="0"
-          max="2"
-          value={rate}
-          className="range range-secondary hover:range-primary range-xs w-full"
-          step="0.1"
-          onChange={updateRate}
-        />
-        <div
-          className="w-full flex justify-between text-xs px-1 text-secondary"
-          aria-hidden="true"
-        >
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
+        <div className="flex-1 min-w-0">
+          <label htmlFor="rate-slider" className="font-medium block mb-2">
+            Rate: {rate}
+          </label>
+          <input
+            id="rate-slider"
+            type="range"
+            min="0"
+            max="2"
+            value={rate}
+            className="range range-secondary hover:range-primary range-xs w-full"
+            step="0.1"
+            onChange={updateRate}
+          />
+          <div
+            className="w-full flex justify-between text-xs px-1 text-secondary"
+            aria-hidden="true"
+          >
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+          </div>
         </div>
       </div>
     </div>

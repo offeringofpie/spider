@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import Sprite from '../components/Sprite';
 import Fab from '../components/Fab';
 import Translate from '../components/Translate';
+import Settings from '../components/Settings';
 
 const q = Astro.url.searchParams.get('q');
 const userAgent = Astro.request.headers.get('user-agent') || '';
@@ -52,6 +53,7 @@ if (q && isBot) {
   <Progress client:load />
   <Header client:only />
   <Translate client:only />
+  <Settings client:only />
 
   <main class="mx-auto max-w-4xl px-6 py-10">
     <Home client:only />

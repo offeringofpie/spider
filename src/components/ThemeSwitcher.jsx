@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
 
 // import { themeChange } from "theme-change";
@@ -7,19 +7,15 @@ export default function ThemeSwitcher(props) {
   const [state, setState] = useStore(defaultStore);
 
   const change = (e) => {
-    setState({theme: e.target.value});
-  }
-  
-  // useEffect(() => {
-  //   themeChange(false);
-  //   // 👆 false parameter is required for react project
-  // }, []);
+    setState({ theme: e.target.value });
+  };
   return (
     <select
-      className="select bg-base-300 border-primary focus:border-primary border-r-0 focus:outline-0 text-primary-focus hover:text-primary text-sm rounded-none rounded-l-xl cursor-pointer"
+      className="select select-primary border-primary focus:border-primary border-r-0 focus:outline-0 text-primary-focus hover:text-primary text-sm rounded-none rounded-l-xl cursor-pointer"
       defaultValue={state.theme}
       onChange={change}
-      onBlur={change}>
+      onBlur={change}
+    >
       <option disabled>Dark Themes</option>
       <option value="aqua">Aqua</option>
       <option value="abyss">Abyss</option>

@@ -24,12 +24,12 @@ const TextSettings = () => {
               <button
                 key={size.value}
                 onClick={() => setState({ textSize: size.value })}
-                className={`btn join-item flex-1 focus:outline-0 text-xs h-full min-h-0 ${
+                className={`btn join-item flex-1 focus:outline-0 text-xs min-h-0 ${
                   index === 0 ? '!rounded-l-xl' : ''
                 } ${index === textSizes.length - 1 ? '!rounded-r-xl' : ''} ${
                   isActive
-                    ? 'bg-secondary text-primary-content border-secondary hover:bg-primary-focus'
-                    : 'bg-base-300 text-primary-focus hover:text-primary hover:bg-base-200 border-secondary/70 hover:border-secondary'
+                    ? 'bg-primary text-primary-content border-primary hover:bg-primary-focus'
+                    : 'text-primary-focus hover:text-primary hover:bg-base-200 border-primary/70 hover:border-primary'
                 }`}
               >
                 {size.label}
@@ -42,7 +42,7 @@ const TextSettings = () => {
       <div className="flex flex-col gap-2 flex-1 w-1/2">
         <label className="text-center tracking-wider">Line Spacing</label>
         <select
-          className="select select-secondary focus:outline-0 w-full text-primary-focus hover:text-primary rounded-xl h-12"
+          className="select select-primary focus:outline-0 w-full text-primary-focus hover:text-primary rounded-xl cursor-pointer"
           value={state.lineHeight || 'leading-relaxed'}
           onChange={(e) => setState({ lineHeight: e.target.value })}
         >

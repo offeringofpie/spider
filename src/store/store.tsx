@@ -91,6 +91,7 @@ interface DefaultState {
   loaded: boolean;
   initialized: boolean;
   showTranslateBar: boolean;
+  showSettings: boolean;
   textSize: string;
   lineHeight: string;
 }
@@ -105,6 +106,7 @@ const defaultStore = new Store<DefaultState>(
     loaded: false,
     initialized: false,
     showTranslateBar: false,
+    showSettings: false,
     textSize: 'text-lg',
     lineHeight: 'leading-relaxed',
   },
