@@ -6,13 +6,15 @@ import Voices from './Voices';
 
 export default function Settings() {
   const [state, setState] = useStore(defaultStore);
+  const isVisible = state.showSettings;
 
   return (
     <div
-      className={`w-full bg-base-300 transition-all duration-300 ease-in-out border-b border-primary/20 ${
-        state.showSettings
-          ? 'max-h-[800px] opacity-100'
-          : 'max-h-0 opacity-0 py-0 border-transparent overflow-hidden'
+      inert={!isVisible ? 'true' : undefined}
+      className={`w-full bg-base-200 transition-all duration-300 ease-in-out border-b border-primary/20 ${
+        isVisible
+          ? 'max-h-200 opacity-100 py-6'
+          : 'max-h-0 opacity-0 py-0 border-transparent overflow-hidden invisible'
       }`}
     >
       <div

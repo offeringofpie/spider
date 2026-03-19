@@ -11,10 +11,11 @@ export default function ThemeSwitcher(props) {
   };
   return (
     <select
-      className="select select-primary border-primary focus:border-primary border-r-0 focus:outline-0 text-primary-focus hover:text-primary text-sm rounded-none rounded-l-xl cursor-pointer"
+      className="select select-primary border-r-0 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base-100 text-primary-focus hover:text-primary text-sm rounded-none rounded-l-xl cursor-pointer transition-all"
       defaultValue={state.theme}
       onChange={change}
       onBlur={change}
+      tabIndex={state.showSettings ? 0 : -1} // Integrated accessibility
     >
       <option disabled>Dark Themes</option>
       <option value="aqua">Aqua</option>

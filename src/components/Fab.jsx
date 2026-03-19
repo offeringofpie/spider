@@ -22,8 +22,12 @@ export default function Fab() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isOpen) {
-        setIsOpen(false);
+      if (e.key === 'Escape') {
+        if (isOpen) setIsOpen(false);
+
+        if (state.showSettings || state.showTranslateBar) {
+          setState({ showSettings: false, showTranslateBar: false });
+        }
       }
     };
 

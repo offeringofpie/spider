@@ -76,3 +76,12 @@ body {
   pointer-events: auto !important;
   user-select: auto !important;
 }
+
+:focus-visible {
+  outline: 2px solid var(--color-primary) !important;
+  outline-offset: 2px !important;
+}
+
+.join-item:focus-visible {
+  z-index: 20;
+}

@@ -79,6 +79,27 @@ export default function Header(props) {
         });
       }
     }
+    useEffect(() => {
+      const handleKeyDown = (e) => {
+        const activeTag = document.activeElement?.tagName;
+        if (
+          activeTag === 'INPUT' ||
+          activeTag === 'TEXTAREA' ||
+          activeTag === 'SELECT'
+        ) {
+          return;
+        }
+
+        if (e.key === '/') {
+          e.preventDefault();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          document.getElementById('url')?.focus();
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
   }
   return isEmbedded ? (
     <header>Hello world</header>

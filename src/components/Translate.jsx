@@ -83,7 +83,12 @@ export default function TranslateBar() {
 
   return (
     <div
-      className={`w-full bg-base-300 transition-all duration-300 ease-in-out notranslate ${state.showTranslateBar ? 'max-h-20 border-b border-primary/20' : 'max-h-0 overflow-hidden'}`}
+      inert={!state.showTranslateBar ? 'true' : undefined}
+      className={`w-full bg-base-300 transition-all duration-300 ease-in-out notranslate ${
+        state.showTranslateBar
+          ? 'max-h-20 border-b border-primary/20'
+          : 'max-h-0 overflow-hidden invisible'
+      }`}
     >
       <div className="w-full mx-auto max-w-4xl px-6 p-4 flex items-center justify-between">
         <h3 className="text-base-content hidden sm:block">Translate</h3>

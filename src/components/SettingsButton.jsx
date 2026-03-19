@@ -17,7 +17,7 @@ const SettingsButton = ({ variant = 'header', tabIndex = 0 }) => {
           onClick={toggleSettings}
           tabIndex={tabIndex}
           aria-label="Settings"
-          className="btn bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14 shadow-sm"
+          className={`btn text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14 shadow-sm`}
         >
           <span className="text-sm font-medium">Settings</span>
           <div className="bg-info/10 text-info rounded-full p-2">
@@ -33,7 +33,7 @@ const SettingsButton = ({ variant = 'header', tabIndex = 0 }) => {
       ) : (
         <button
           onClick={toggleSettings}
-          className={`text-primary-focus cursor-pointer hover:text-primary h-full pr-1 relative`}
+          className={`text-primary-focus cursor-pointer hover:text-primary h-full relative transition-all duration-300 ${state.showSettings ? 'text-primary rotate-180 origin-center' : ''}`}
           title="Settings"
           aria-label="Settings"
         >

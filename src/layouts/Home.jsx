@@ -3,6 +3,7 @@ import { defaultStore, useStore } from '../store/store';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Progress from '../components/Progress';
+import TOC from '../components/TOC';
 import Sprite from '../components/Sprite';
 
 const readTime = (wordCount) => {
@@ -125,9 +126,14 @@ export default function Home() {
                   className="mb-8 w-full rounded-xl border border-slate-700 shadow-md"
                 />
               )}
+
+            <TOC htmlContent={post.content} />
             <div
-              className={`prose prose-invert max-w-none ${state.textSize} ${state.lineHeight}                 prose-headings:font-semibold
+              id="article-content"
+              className={`prose prose-invert max-w-none ${state.textSize} ${state.lineHeight}                 
+                prose-headings:font-semibold
                 prose-headings:tracking-tight
+                prose-headings:block
                 prose-p:my-4
                 prose-a:text-info prose-a:underline prose-a:underline-offset-2`}
               dangerouslySetInnerHTML={{ __html: post.content }}
