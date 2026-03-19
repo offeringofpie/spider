@@ -104,7 +104,7 @@ export default function Header(props) {
   return isEmbedded ? (
     <header>Hello world</header>
   ) : (
-    <header className="navbar bg-base-100 shadow-sm flex content-center justify-center w-full max-w-4xl mx-auto">
+    <header className="navbar bg-base-100 flex content-center justify-center w-full max-w-4xl mx-auto">
       <div className="flex w-full max-w-6xl p-2">
         <form onSubmit={fetchData} name="submit" className="flex-1 flex">
           <div className="relative flex w-full">

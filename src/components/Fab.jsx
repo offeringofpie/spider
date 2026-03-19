@@ -259,7 +259,7 @@ export default function Fab() {
             onClick={toggleSpeech}
             tabIndex={menuTabIndex}
             aria-label="Read Article Aloud"
-            className="bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14 shadow-sm"
+            className="bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14"
           >
             <span className="text-sm font-medium">Text-to-Speech</span>
             <div className="bg-secondary/10 text-secondary rounded-full p-2">
@@ -269,7 +269,7 @@ export default function Fab() {
             </div>
           </button>
         ) : (
-          <div className="bg-base-100 text-base-content rounded-full flex items-center gap-2 pl-5 pr-2 h-14 shadow-sm pointer-events-auto">
+          <div className="bg-base-100 text-base-content rounded-full flex items-center gap-2 pl-5 pr-2 h-14 pointer-events-auto">
             <span className="text-sm font-medium pr-2" aria-live="polite">
               {isPaused ? 'Paused' : 'Reading'}
             </span>

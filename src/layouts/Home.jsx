@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
 import Header from '../components/Header';
-import Sidebar from '../components/Sidebar';
 import Progress from '../components/Progress';
 import TOC from '../components/TOC';
 import Sprite from '../components/Sprite';
@@ -131,7 +130,7 @@ export default function Home() {
             <div
               id="article-content"
               aria-live={state.isSpeaking ? 'polite' : 'off'}
-              className={`prose prose-invert max-w-none ${state.textSize} ${state.lineHeight}                 
+              className={`prose prose-invert max-w-none ${state.textSize} ${state.lineHeight}
                 prose-headings:font-semibold
                 prose-headings:tracking-tight
                 prose-headings:block
