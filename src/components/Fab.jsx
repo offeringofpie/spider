@@ -7,10 +7,13 @@ export default function Fab() {
   const [state, setState] = useStore(defaultStore);
   const [copied, setCopied] = useState(false);
   const [isEmbedded, setIsEmbedded] = useState(false);
-
   const [isPaused, setIsPaused] = useState(false);
+
   const synthRef = useRef(null);
   const fabRef = useRef(null);
+  const utterancesRef = useRef([]);
+
+  const shouldReadRef = useRef(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -23,7 +26,6 @@ export default function Fab() {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         if (isOpen) setIsOpen(false);
-
         if (state.showSettings || state.showTranslateBar) {
           setState({ showSettings: false, showTranslateBar: false });
         }
@@ -31,9 +33,8 @@ export default function Fab() {
     };
 
     const handleClickOutside = (e) => {
-      if (fabRef.current && !fabRef.current.contains(e.target)) {
+      if (fabRef.current && !fabRef.current.contains(e.target))
         setIsOpen(false);
-      }
     };
 
     if (isOpen) {
@@ -59,32 +60,20 @@ export default function Fab() {
 
   const handleShare = async () => {
     let title = document.title;
-    let text = '';
-
     if (state.posts) {
       try {
         const article = JSON.parse(state.posts);
         title = article.title || document.title;
-        text = article.excerpt || article.description || '';
       } catch (err) {
         console.error(err);
       }
     }
-
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: title,
-          text: text,
-          url: window.location.href,
-        });
-
+        await navigator.share({ title, url: window.location.href });
         setIsOpen(false);
       } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.error(err);
-          copyToClipboard();
-        }
+        if (err.name !== 'AbortError') copyToClipboard();
       }
     } else {
       copyToClipboard();
@@ -92,15 +81,21 @@ export default function Fab() {
   };
 
   const cleanUpHighlights = () => {
-    document.querySelectorAll('.tts-highlight').forEach((el) => {
-      el.classList.remove(
-        'bg-primary/20',
-        'tts-highlight',
-        'rounded-md',
-        'transition-colors',
-        'duration-300',
-      );
+    document.querySelectorAll('.tts').forEach((el) => {
+      el.classList.remove('tts');
     });
+  };
+
+  const scrollIntoViewIfNeeded = (el) => {
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const isInViewport =
+      rect.top >= 0 &&
+      rect.bottom <=
+        (window.innerHeight || document.documentElement.clientHeight);
+    if (!isInViewport) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   };
 
   const toggleSpeech = () => {
@@ -119,20 +114,30 @@ export default function Fab() {
     }
 
     if (state.isSpeaking) {
+      shouldReadRef.current = false;
       synthRef.current.cancel();
       setState({ isSpeaking: false });
+      setIsPaused(false);
       cleanUpHighlights();
       return;
     }
 
-    const article = document.querySelector('article');
-    if (!article) return;
+    const container =
+      document.querySelector('article') ||
+      document.querySelector('#article-content') ||
+      document.body;
+    if (!container) return;
 
-    const elements = Array.from(
-      article.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, blockquote'),
-    ).filter((el) => el.innerText && el.innerText.trim().length > 0);
+    const blocks = Array.from(
+      container.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, blockquote'),
+    ).filter((el) => {
+      const hasBlockChildren = el.querySelector(
+        'p, h1, h2, h3, h4, h5, h6, li, blockquote',
+      );
+      return !hasBlockChildren && el.textContent.trim().length > 0;
+    });
 
-    if (elements.length === 0) return;
+    if (blocks.length === 0) return;
 
     const voiceName = localStorage.getItem('voice');
     const voices = synthRef.current.getVoices();
@@ -143,10 +148,22 @@ export default function Fab() {
     const pitch = parseFloat(localStorage.getItem('pitch') || '1');
 
     setState({ isSpeaking: true });
+    shouldReadRef.current = true;
+    utterancesRef.current = [];
 
-    elements.forEach((el, index) => {
-      const textToRead = el.innerText;
-      const utterance = new SpeechSynthesisUtterance(textToRead);
+    let currentBlockIndex = 0;
+
+    const speakNext = () => {
+      if (!shouldReadRef.current || currentBlockIndex >= blocks.length) {
+        setState({ isSpeaking: false });
+        cleanUpHighlights();
+        return;
+      }
+
+      const block = blocks[currentBlockIndex];
+      const utterance = new SpeechSynthesisUtterance(block.textContent);
+
+      utterancesRef.current[0] = utterance;
 
       if (selectedVoice) utterance.voice = selectedVoice;
       utterance.rate = rate;
@@ -154,45 +171,31 @@ export default function Fab() {
 
       utterance.onstart = () => {
         cleanUpHighlights();
-
-        el.classList.add(
-          'bg-primary/20',
-          'tts-highlight',
-          'rounded-md',
-          'transition-colors',
-          'duration-300',
-        );
-
-        const rect = el.getBoundingClientRect();
-        const isInViewport =
-          rect.top >= 0 &&
-          rect.bottom <=
-            (window.innerHeight || document.documentElement.clientHeight);
-
-        if (!isInViewport) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        block.classList.add('tts');
+        scrollIntoViewIfNeeded(block);
       };
 
       utterance.onend = () => {
-        if (index === elements.length - 1) {
-          setState({ isSpeaking: false });
-          cleanUpHighlights();
+        currentBlockIndex++;
+        if (shouldReadRef.current) {
+          setTimeout(speakNext, 50);
         }
       };
 
       utterance.onerror = (e) => {
         if (e.error !== 'canceled') {
-          console.error('Speech synthesis error:', e);
-        }
-        if (index === elements.length - 1) {
-          setState({ isSpeaking: false });
+          console.error('TTS Error:', e);
+          currentBlockIndex++;
+          if (shouldReadRef.current) setTimeout(speakNext, 50);
+        } else {
           cleanUpHighlights();
         }
       };
 
       synthRef.current.speak(utterance);
-    });
+    };
+
+    speakNext();
   };
 
   const toggleTranslateBar = () => {
@@ -221,17 +224,13 @@ export default function Fab() {
           aria-label="Share Article"
           className="bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14"
         >
-          <span className="text-sm font-medium" aria-live="polite">
+          <span className="text-sm font-medium">
             {copied ? 'Link Copied!' : 'Share'}
           </span>
           <div
-            className={`${copied ? 'bg-success/10 text-success' : 'bg-accent/10 text-accent'} rounded-full p-2 transition-colors`}
+            className={`${copied ? 'bg-success/10 text-success' : 'bg-accent/10 text-accent'} rounded-full p-2`}
           >
-            <svg
-              aria-hidden="true"
-              className="w-5 h-5"
-              viewBox="0 0 458.624 458.624"
-            >
+            <svg className="w-5 h-5" viewBox="0 0 458.624 458.624">
               <use href="#share" />
             </svg>
           </div>
@@ -244,12 +243,7 @@ export default function Fab() {
         >
           <span className="text-sm font-medium">Translate</span>
           <div className="bg-primary/10 text-primary rounded-full p-2">
-            <svg
-              aria-hidden="true"
-              className="w-5 h-5"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
               <use href="#translate" />
             </svg>
           </div>
@@ -263,22 +257,20 @@ export default function Fab() {
           >
             <span className="text-sm font-medium">Text-to-Speech</span>
             <div className="bg-secondary/10 text-secondary rounded-full p-2">
-              <svg aria-hidden="true" className="w-5 h-5" viewBox="0 0 32 32">
+              <svg className="w-5 h-5" viewBox="0 0 32 32">
                 <use href="#mic" />
               </svg>
             </div>
           </button>
         ) : (
           <div className="bg-base-100 text-base-content rounded-full flex items-center gap-2 pl-5 pr-2 h-14 pointer-events-auto">
-            <span className="text-sm font-medium pr-2" aria-live="polite">
+            <span className="text-sm font-medium pr-2">
               {isPaused ? 'Paused' : 'Reading'}
             </span>
-
             <button
               onClick={toggleSpeech}
-              tabIndex={menuTabIndex}
-              aria-label={isPaused ? 'Resume Reading' : 'Pause Reading'}
-              className="btn-circle btn-sm bg-secondary/10 text-secondary hover:bg-secondary/20 border-none h-10 w-10 flex items-center justify-center"
+              aria-label={isPaused ? 'Resume' : 'Pause'}
+              className="btn-circle btn-sm bg-secondary/10 text-secondary h-10 w-10 flex items-center justify-center"
             >
               {isPaused ? (
                 <svg
@@ -298,17 +290,17 @@ export default function Fab() {
                 </svg>
               )}
             </button>
-
             <button
               onClick={() => {
+                shouldReadRef.current = false;
                 synthRef.current.cancel();
                 setState({ isSpeaking: false });
                 setIsPaused(false);
                 cleanUpHighlights();
+                utterancesRef.current = [];
               }}
-              tabIndex={menuTabIndex}
-              aria-label="Stop Reading"
-              className="btn btn-circle btn-sm bg-error/10 text-error hover:bg-error/20 border-none h-10 w-10 flex items-center justify-center"
+              aria-label="Stop"
+              className="btn btn-circle btn-sm bg-error/10 text-error h-10 w-10 flex items-center justify-center ml-1"
             >
               <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                 <use href="#stop" />
@@ -321,13 +313,11 @@ export default function Fab() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
-        aria-controls="fab-menu"
-        aria-label={isOpen ? 'Close actions menu' : 'Open actions menu'}
-        className="btn btn-circle bg-primary text-primary-content hover:bg-secondary focus:bg-secondary border-none h-10 w-10"
+        aria-label="Menu"
+        className="btn btn-circle bg-primary text-primary-content hover:bg-secondary border-none h-12 w-12 transition-transform duration-300 pointer-events-auto"
       >
         <svg
-          aria-hidden="true"
-          className={`w-6 h-6 transition-transform duration-300 ease-in-out ${isOpen ? 'rotate-135' : 'rotate-0'}`}
+          className={`w-6 h-6 transition-transform duration-300 ${isOpen ? 'rotate-135' : 'rotate-0'}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"

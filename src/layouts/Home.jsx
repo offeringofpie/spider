@@ -146,12 +146,12 @@ export default function Home() {
             <div className="skeleton bg-info h-6 w-full"></div>
             <div className="skeleton bg-info h-5 w-full"></div>
             <div className="skeleton bg-info h-32 w-full"></div>
-            <div className="skeleton bg-info h-4 w-28"></div>
-            <div className="skeleton bg-info h-4 w-62"></div>
+            <div className="skeleton bg-info h-4 w-1/4"></div>
+            <div className="skeleton bg-info h-4 w-3/4"></div>
             <div className="skeleton bg-info h-4 w-full"></div>
-            <div className="skeleton bg-info h-4 w-28"></div>
-            <div className="skeleton bg-info h-4 w-50"></div>
-            <div className="skeleton bg-info h-4 w-80"></div>
+            <div className="skeleton bg-info h-4 w-1/4"></div>
+            <div className="skeleton bg-info h-4 w-1/2"></div>
+            <div className="skeleton bg-info h-4 w-5/6"></div>
             <div className="skeleton bg-info h-4 w-full"></div>
           </div>
         )}

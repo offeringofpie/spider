@@ -83,7 +83,7 @@ export default function TranslateBar() {
 
   return (
     <div
-      inert={!state.showTranslateBar ? 'true' : undefined}
+      inert={!state.showTranslateBar ? true : undefined}
       className={`w-full bg-base-300 transition-all duration-300 ease-in-out notranslate ${
         state.showTranslateBar
           ? 'max-h-20 border-b border-primary/20'
