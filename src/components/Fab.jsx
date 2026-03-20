@@ -122,14 +122,15 @@ export default function Fab() {
       return;
     }
 
-    const container =
+    const initialContainer =
       document.querySelector('article') ||
       document.querySelector('#article-content') ||
       document.body;
-    if (!container) return;
 
-    const blocks = Array.from(
-      container.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, blockquote'),
+    const initialBlocks = Array.from(
+      initialContainer.querySelectorAll(
+        'h1, h2, h3, h4, h5, h6, p, li, blockquote',
+      ),
     ).filter((el) => {
       const hasBlockChildren = el.querySelector(
         'p, h1, h2, h3, h4, h5, h6, li, blockquote',
@@ -137,7 +138,7 @@ export default function Fab() {
       return !hasBlockChildren && el.textContent.trim().length > 0;
     });
 
-    if (blocks.length === 0) return;
+    if (initialBlocks.length === 0) return;
 
     const voiceName = localStorage.getItem('voice');
     const voices = synthRef.current.getVoices();
@@ -154,13 +155,35 @@ export default function Fab() {
     let currentBlockIndex = 0;
 
     const speakNext = () => {
-      if (!shouldReadRef.current || currentBlockIndex >= blocks.length) {
+      if (!shouldReadRef.current) {
         setState({ isSpeaking: false });
         cleanUpHighlights();
         return;
       }
 
-      const block = blocks[currentBlockIndex];
+      const liveContainer =
+        document.querySelector('article') ||
+        document.querySelector('#article-content') ||
+        document.body;
+
+      const liveBlocks = Array.from(
+        liveContainer.querySelectorAll(
+          'h1, h2, h3, h4, h5, h6, p, li, blockquote',
+        ),
+      ).filter((el) => {
+        const hasBlockChildren = el.querySelector(
+          'p, h1, h2, h3, h4, h5, h6, li, blockquote',
+        );
+        return !hasBlockChildren && el.textContent.trim().length > 0;
+      });
+
+      if (currentBlockIndex >= liveBlocks.length) {
+        setState({ isSpeaking: false });
+        cleanUpHighlights();
+        return;
+      }
+
+      const block = liveBlocks[currentBlockIndex];
       const utterance = new SpeechSynthesisUtterance(block.textContent);
 
       utterancesRef.current[0] = utterance;
@@ -169,10 +192,12 @@ export default function Fab() {
       utterance.rate = rate;
       utterance.pitch = pitch;
 
+      cleanUpHighlights();
+      block.classList.add('tts');
+      scrollIntoViewIfNeeded(block);
+
       utterance.onstart = () => {
-        cleanUpHighlights();
         block.classList.add('tts');
-        scrollIntoViewIfNeeded(block);
       };
 
       utterance.onend = () => {
@@ -195,7 +220,7 @@ export default function Fab() {
       synthRef.current.speak(utterance);
     };
 
-    speakNext();
+    setTimeout(speakNext, 100);
   };
 
   const toggleTranslateBar = () => {
