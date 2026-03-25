@@ -97,7 +97,7 @@ export default function Home() {
   }
 
   return (
-    <div className="w-full mx-auto max-w-4xl px-4 text-slate-100">
+    <div className="w-full mx-auto max-w-4xl text-slate-100">
       <article className="text-left">
         {isLoaded && (
           <>
