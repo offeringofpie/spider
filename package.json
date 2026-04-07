@@ -15,14 +15,14 @@
     "functions:serve": "netlify functions:serve"
   },
   "dependencies": {
-    "@astrojs/netlify": "^7.0.2",
-    "@astrojs/react": "^5.0.0",
+    "@astrojs/netlify": "^7.0.6",
+    "@astrojs/react": "^5.0.3",
     "@jocmp/mercury-parser": "^3.0.3",
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.2.1",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "astro": "^6.0.4",
+    "astro": "^6.1.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.2.1",
