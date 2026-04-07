@@ -143,16 +143,10 @@ export default function Home() {
 
         {state.loading && (
           <div className="mt-4 flex w-full max-w-2xl flex-col gap-4 mx-auto py-6">
-            <div className="skeleton bg-info h-6 w-full"></div>
-            <div className="skeleton bg-info h-5 w-full"></div>
-            <div className="skeleton bg-info h-32 w-full"></div>
-            <div className="skeleton bg-info h-4 w-1/4"></div>
-            <div className="skeleton bg-info h-4 w-3/4"></div>
-            <div className="skeleton bg-info h-4 w-full"></div>
-            <div className="skeleton bg-info h-4 w-1/4"></div>
-            <div className="skeleton bg-info h-4 w-1/2"></div>
-            <div className="skeleton bg-info h-4 w-5/6"></div>
-            <div className="skeleton bg-info h-4 w-full"></div>
+            <div className="skeleton bg-neutral-content h-32 w-full"></div>
+            <div className="skeleton bg-neutral-content h-4 w-28"></div>
+            <div className="skeleton bg-neutral-content h-4 w-full"></div>
+            <div className="skeleton bg-neutral-content h-4 w-full"></div>
           </div>
         )}
       </article>
