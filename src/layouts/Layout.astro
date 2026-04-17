@@ -27,6 +27,8 @@ defaultStore.subscribe(() => {
 <html lang="en" data-theme={currentTheme} data-font={currentFont}>
   <head>
     <title>{title}</title>
+    <link rel="canonical" href={new URL(Astro.url.pathname, url).toString()} />
+    <link rel="alternate" href="/llms.txt" title="LLMs.txt" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
@@ -37,20 +39,56 @@ defaultStore.subscribe(() => {
     {/* Twitter */}
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:creator" content="jelo" />
+    <meta name="twitter:image" content={image} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
 
     {/* Open Graph */}
-    <meta property="og:type" content={type} />
-    <meta property="og:url" content={url} />
-    <meta property="og:image" content={image} />
-    <meta property="og:site_name" content="Spider Parser" />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
+    <meta name="og:type" content={type} />
+    <meta name="og:url" content={url} />
+    <meta name="og:image" content={image} />
+    <meta name="og:image:width" content="1200" />
+    <meta name="og:image:height" content="630" />
+    <meta name="og:site_name" content="Spider Parser" />
+    <meta name="og:title" content={title} />
+    <meta name="og:description" content={description} />
+    <meta
+      name="robots"
+      content="max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+    />
+    <script
+      id="app-jsonld"
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'WebSite',
+            '@id': 'https://spider.jlopes.eu/#website',
+            url: 'https://spider.jlopes.eu/',
+            name: 'Spider Parser',
+            description: 'Parse news articles and web pages with ease.',
+          },
+          {
+            '@type': 'WebApplication',
+            '@id': 'https://spider.jlopes.eu/#app',
+            name: 'Spider Parser',
+            url: 'https://spider.jlopes.eu/',
+            description: 'A clean reader view for news articles and web pages.',
+            applicationCategory: 'UtilityApplication',
+            browserRequirements:
+              'Requires a modern web browser with JavaScript enabled.',
+            isPartOf: { '@id': 'https://spider.jlopes.eu/#website' },
+          },
+        ],
+      })}
+    />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       rel="preconnect"
       href="https://fonts.gstatic.com"
-      cross-origin="true"
+      crossorigin="anonymous"
     />
     <link
       href="https://fonts.googleapis.com/css2?family=Almendra:ital,wght@0,400;0,700;1,400&family=Comic+Neue:ital,wght@0,400;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Pinyon+Script&display=swap"

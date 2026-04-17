@@ -1,0 +1,19 @@
+# Spider Parser
+
+> A clean reader view for news articles and web pages. Paste any article URL to get a distraction-free reading experience, with customisable fonts and themes.
+
+## What this site does
+
+Spider Parser fetches and parses any public news article or web page and presents it in a clean, readable format. It strips ads, navigation, and visual clutter, preserving only the article content, headline, publication date, and lead image.
+
+## Features
+
+- Clean reader view for any public URL
+- Customisable themes and fonts
+- Text-to-speech playback
+- Google Translate integration
+- Table of contents for long articles
+
+## Author
+
+Built by J Lopes — https://jlopes.eu/about
