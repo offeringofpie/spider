@@ -7,13 +7,13 @@ import indexnow from 'astro-indexnow';
 
 // https://astro.build/config
 export default defineConfig({
+  site: 'https://spider.jlopes.eu',
   integrations: [
     react(),
     indexnow({
       key: process.env.INDEXNOW_KEY,
     }),
   ],
-
   vite: {
     plugins: [tailwindcss()],
   },
