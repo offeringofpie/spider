@@ -46,7 +46,7 @@ export default function Header(props) {
         setState({ loading: true, loaded: false });
 
         const res = await fetch(
-          `/.netlify/functions/parser?q=${encodeURIComponent(url)}`,
+          `/api/parse?q=${encodeURIComponent(url)}`,
           { headers: { accept: 'application/json' } },
         );
         const data = await res.json();

@@ -1,4 +1,4 @@
-import { Parser } from '@jocmp/mercury-parser';
+import Parser from '@jocmp/mercury-parser';
 
 export const prerender = false;
 
