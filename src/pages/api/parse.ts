@@ -1,4 +1,6 @@
-const Parser = require('@jocmp/mercury-parser');
+import { Parser } from '@jocmp/mercury-parser';
+
+export const prerender = false;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,6 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type',
   'Content-Type': 'application/json',
 };
+
 const cacheHeaders = {
   ...corsHeaders,
   'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
@@ -14,35 +17,30 @@ const cacheHeaders = {
 const strategies = [
   {
     name: 'wayback',
-    matches: (url) =>
-      ['tijd.be', 'standaard.be', 'ft.com'].some((d) =>
-        url.hostname.includes(d),
-      ),
-    fetchUrl: (url) => `https://web.archive.org/web/2/${url.href}`,
+    matches: (url: URL) =>
+      ['tijd.be', 'standaard.be', 'ft.com'].some((d) => url.hostname.includes(d)),
+    fetchUrl: (url: URL) => `https://web.archive.org/web/2/${url.href}`,
     headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     },
   },
   {
     name: 'archive',
     matches: () => false,
-    fetchUrl: (url) => `https://archive.ph/newest/${url.href}`,
+    fetchUrl: (url: URL) => `https://archive.ph/newest/${url.href}`,
     headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     },
   },
   {
     name: 'googlebot',
-    matches: (url) =>
+    matches: (url: URL) =>
       ['.be', '.nl', '.fr', '.de'].some((tld) => url.hostname.endsWith(tld)),
-    fetchUrl: (url) => url.href,
+    fetchUrl: (url: URL) => url.href,
     headers: {
-      'User-Agent':
-        'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+      'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'Accept-Language': 'en-US,en;q=0.5',
     },
@@ -50,17 +48,16 @@ const strategies = [
   {
     name: 'facebook',
     matches: () => false,
-    fetchUrl: (url) => url.href,
+    fetchUrl: (url: URL) => url.href,
     headers: {
-      'User-Agent':
-        'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+      'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     },
   },
   {
     name: 'regular',
     matches: () => true,
-    fetchUrl: (url) => url.href,
+    fetchUrl: (url: URL) => url.href,
     headers: {
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
@@ -69,9 +66,12 @@ const strategies = [
   },
 ];
 
-const parsers = [];
-
-async function fetchWithRetry(fetchUrl, options, retries = 2, backoff = 500) {
+async function fetchWithRetry(
+  fetchUrl: string,
+  options: RequestInit,
+  retries = 2,
+  backoff = 500
+): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     const response = await fetch(fetchUrl, options);
     if (response.status !== 429) return response;
@@ -80,80 +80,54 @@ async function fetchWithRetry(fetchUrl, options, retries = 2, backoff = 500) {
     console.warn(`429 received, retrying in ${delay}ms...`);
     await new Promise((res) => setTimeout(res, delay));
   }
-  throw new Error('HTTP 429: Too Many Requests (retries exhausted)');
+  throw new Error('HTTP 429: Too Many Requests');
 }
 
-export const handler = async function (event) {
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: corsHeaders, body: 'OK' };
-  }
-
-  const { q: urlString, strategy = 'auto' } = event.queryStringParameters || {};
+export async function GET({ request }: { request: Request }) {
+  const { searchParams } = new URL(request.url);
+  const urlString = searchParams.get('q');
+  const strategy = searchParams.get('strategy') ?? 'auto';
 
   if (!urlString) {
-    return {
-      statusCode: 400,
-      headers: corsHeaders,
-      body: JSON.stringify({
-        error: 'Invalid/No URL provided',
-        usage: 'Add ?q=URL_TO_PARSE',
-      }),
-    };
+    return new Response(
+      JSON.stringify({ error: 'Invalid/No URL provided', usage: 'Add ?q=URL_TO_PARSE' }),
+      { status: 400, headers: corsHeaders }
+    );
   }
 
-  let url;
+  let url: URL;
   try {
     url = new URL(urlString);
-  } catch (error) {
-    return {
-      statusCode: 400,
-      headers: corsHeaders,
-      body: JSON.stringify({
-        error: 'Invalid URL format',
-        provided: urlString,
-      }),
-    };
+  } catch {
+    return new Response(
+      JSON.stringify({ error: 'Invalid URL format', provided: urlString }),
+      { status: 400, headers: corsHeaders }
+    );
   }
 
-  let strategiesToTry = [];
+  let strategiesToTry;
   if (strategy === 'auto') {
     const primary =
-      strategies.find((s) => s.matches(url)) ||
-      strategies.find((s) => s.name === 'regular');
+      strategies.find((s) => s.matches(url)) ??
+      strategies.find((s) => s.name === 'regular')!;
     const fallbackNames = ['googlebot', 'wayback', 'archive', 'regular'];
     strategiesToTry = [
       primary,
       ...fallbackNames
         .filter((name) => name !== primary.name)
-        .map((name) => strategies.find((s) => s.name === name)),
+        .map((name) => strategies.find((s) => s.name === name)!),
     ];
   } else {
     strategiesToTry = [
-      strategies.find((s) => s.name === strategy) ||
-        strategies.find((s) => s.name === 'regular'),
+      strategies.find((s) => s.name === strategy) ??
+        strategies.find((s) => s.name === 'regular')!,
     ];
   }
 
-  parsers.forEach((parser) => {
-    if (url.hostname.includes(parser.domain)) {
-      try {
-        Parser.addExtractor(parser);
-      } catch (e) {
-        /* ignore */
-      }
-    }
-  });
-
-  let lastError = null;
-  let archiveCandidates = [
-    {
-      label: 'Wayback Machine snapshots',
-      url: `https://web.archive.org/web/*/${url.href}`,
-    },
-    {
-      label: 'archive.ph (newest)',
-      url: `https://archive.ph/newest/${url.href}`,
-    },
+  let lastError: string | null = null;
+  const archiveCandidates = [
+    { label: 'Wayback Machine snapshots', url: `https://web.archive.org/web/*/${url.href}` },
+    { label: 'archive.ph (newest)', url: `https://archive.ph/newest/${url.href}` },
   ];
 
   for (const currentStrategy of strategiesToTry) {
@@ -168,19 +142,14 @@ export const handler = async function (event) {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const html = await response.text();
-      const parsed = await Parser.parse(url.href, {
-        html: html,
-        contentType: 'html',
-      });
+      const parsed = await Parser.parse(url.href, { html, contentType: 'html' });
 
       if (!parsed.content || parsed.content.trim() === '') {
         throw new Error('Parsed successfully, but content was empty.');
       }
 
-      return {
-        statusCode: 200,
-        headers: cacheHeaders,
-        body: JSON.stringify({
+      return new Response(
+        JSON.stringify({
           ...parsed,
           meta: {
             originalUrl: url.href,
@@ -189,21 +158,25 @@ export const handler = async function (event) {
             contentLength: html.length,
           },
         }),
-      };
-    } catch (error) {
+        { status: 200, headers: cacheHeaders }
+      );
+    } catch (error: any) {
       console.warn(`Strategy '${currentStrategy.name}' failed:`, error.message);
       lastError = error.message;
     }
   }
 
-  return {
-    statusCode: 500,
-    headers: corsHeaders,
-    body: JSON.stringify({
-      error: lastError || 'All strategies failed to fetch content.',
+  return new Response(
+    JSON.stringify({
+      error: lastError ?? 'All strategies failed to fetch content.',
       url: url.href,
       suggestion: 'Tried requested strategy and fallbacks, all failed.',
       archive_links: archiveCandidates,
     }),
-  };
-};
+    { status: 500, headers: corsHeaders }
+  );
+}
+
+export async function OPTIONS() {
+  return new Response('OK', { status: 200, headers: corsHeaders });
+}

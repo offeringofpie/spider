@@ -25,7 +25,7 @@ let type = 'website';
 if (q && isBot) {
   type = 'article';
   try {
-    const apiUrl = `${Astro.url.origin}/.netlify/functions/parser?q=${encodeURIComponent(q)}`;
+    const apiUrl = `${Astro.url.origin}/api/parse?q=${encodeURIComponent(q)}`;
     const res = await fetch(apiUrl);
 
     if (res.ok) {
