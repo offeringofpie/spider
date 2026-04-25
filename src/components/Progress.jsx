@@ -25,7 +25,7 @@ export default function Progress() {
   return (
     <div className="bg-ghost fixed top-0 left-0 z-50 w-full h-1">
       <hr
-        className="drop-shadow-xl bg-secondary absolute w-full h-full left-0 top-0 border-none"
+        className="drop-shadow-xl bg-linear-to-r from-secondary/20 to-secondary absolute w-full h-full left-0 top-0 border-none"
         style={{
           width: scrolled,
         }}
