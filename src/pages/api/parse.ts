@@ -12,6 +12,7 @@ const corsHeaders = {
 const cacheHeaders = {
   ...corsHeaders,
   'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+  'Netlify-Vary': 'query',
 };
 
 const strategies: Record<string, string[]> = {
