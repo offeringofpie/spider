@@ -8,6 +8,8 @@ import Fab from '../components/Fab';
 import Translate from '../components/Translate';
 import Settings from '../components/Settings';
 
+export const prerender = false;
+
 const q = Astro.url.searchParams.get('q');
 const userAgent = Astro.request.headers.get('user-agent') || '';
 
