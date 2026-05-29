@@ -95,6 +95,7 @@ interface DefaultState {
   showSettings: boolean;
   textSize: string;
   lineHeight: string;
+  leadImageUrl: string | null;
 }
 
 // Create a default store instance
@@ -111,6 +112,7 @@ const defaultStore = new Store<DefaultState>(
     showSettings: false,
     textSize: 'text-lg',
     lineHeight: 'leading-relaxed',
+    leadImageUrl: null,
   },
   'default-state',
 );

@@ -54,6 +54,7 @@ export default function Header(props) {
         if (res.ok && data.content) {
           setState({
             posts: JSON.stringify(data),
+            leadImageUrl: data.lead_image_url || null,
             error: null,
             loading: false,
             loaded: true,
@@ -61,6 +62,7 @@ export default function Header(props) {
         } else {
           setState({
             posts: null,
+            leadImageUrl: null,
             error: JSON.stringify(data),
             loading: false,
             loaded: false,
@@ -71,6 +73,7 @@ export default function Header(props) {
       } catch (err) {
         setState({
           posts: null,
+          leadImageUrl: null,
           error: JSON.stringify({
             error: 'Failed to reach parser function',
           }),
@@ -104,7 +107,7 @@ export default function Header(props) {
   return isEmbedded ? (
     <header>Hello world</header>
   ) : (
-    <header className="navbar bg-base-100 flex content-center justify-center w-full max-w-4xl mx-auto">
+    <header className={`navbar flex content-center justify-center w-full max-w-4xl mx-auto relative z-10 ${state.loaded && state.leadImageUrl ? 'bg-transparent' : 'bg-base-100'}`}>
       <div className="flex w-full max-w-6xl p-2">
         <form onSubmit={fetchData} name="submit" className="flex-1 flex">
           <div className="relative flex w-full">

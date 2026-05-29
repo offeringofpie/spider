@@ -1,6 +1,8 @@
 # build output
 dist/
 output/
+/*.md
+!README.md
 
 # generated types
 .astro/

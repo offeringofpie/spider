@@ -1,30 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
-import Header from '../components/Header';
-import Progress from '../components/Progress';
 import TOC from '../components/TOC';
-import Sprite from '../components/Sprite';
-
-const readTime = (wordCount) => {
-  const wordsPerMinute = 200;
-  const minutes = wordCount / wordsPerMinute;
-
-  if (minutes < 1) {
-    const seconds = Math.ceil(minutes * 60);
-    return `${seconds} second${seconds !== 1 ? 's' : ''}`;
-  } else {
-    const roundedMinutes = Math.ceil(minutes);
-    return `${roundedMinutes} minute${roundedMinutes !== 1 ? 's' : ''}`;
-  }
-};
-
-const formatDate = (dateString) => {
-  const date = new Date(dateString);
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  return `${year}/${month}/${day}`;
-};
 
 export default function Home() {
   const [state] = useStore(defaultStore);
@@ -101,31 +77,6 @@ export default function Home() {
       <article className="text-left">
         {isLoaded && (
           <>
-            <h1 className="font-semibold tracking-tight text-3xl md:text-4xl text-info mb-5">
-              {post.title}
-            </h1>
-
-            <div className="mb-6 flex flex-wrap items-center justify-between text-sm text-slate-300">
-              {post.word_count && <p>{readTime(post.word_count)} read time</p>}
-              {post.date_published && (
-                <time className="mt-2 md:mt-0" dateTime={post.date_published}>
-                  {formatDate(post.date_published)}
-                </time>
-              )}
-            </div>
-
-            {post.lead_image_url &&
-              !(
-                post.content.substring(0, 500).includes('<img') ||
-                post.content.substring(0, 500).includes('<figure')
-              ) && (
-                <img
-                  src={post.lead_image_url}
-                  alt={post.title}
-                  className="mb-8 w-full rounded-xl border border-slate-700 shadow-md"
-                />
-              )}
-
             <TOC htmlContent={post.content} />
             <div
               id="article-content"
