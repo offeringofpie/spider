@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { defaultStore, useStore } from '../store/store';
 
 const readTime = (wordCount) => {
@@ -22,23 +22,12 @@ const formatDate = (dateString) => {
 
 export default function Hero() {
   const [state] = useStore(defaultStore);
-  const [post, setPost] = useState(null);
 
-  useEffect(() => {
-    if (state.posts) {
-      try {
-        setPost(JSON.parse(state.posts));
-      } catch {
-        setPost(null);
-      }
-    } else {
-      setPost(null);
-    }
-  }, [state.posts]);
+  if (state.document.kind !== 'loaded') return null;
 
-  if (!state.loaded || !post) return null;
+  const { post, leadImageUrl } = state.document;
 
-  if (!state.leadImageUrl) {
+  if (!leadImageUrl) {
     return (
       <div className="relative max-w-4xl mx-auto px-6 pt-10">
         <h1 className="font-semibold tracking-tight text-3xl md:text-4xl text-info mb-4">
@@ -62,7 +51,7 @@ export default function Hero() {
         className="inset-0 absolute max-w-full -z-1 bg-cover bg-center"
         style={{
           height: '600px',
-          backgroundImage: `url(${state.leadImageUrl})`,
+          backgroundImage: `url(${leadImageUrl})`,
           filter: 'blur(12px) brightness(0.3) saturate(1.4)',
           maskImage: 'linear-gradient(to bottom, black 55%, transparent 90%)',
           WebkitMaskImage:
@@ -72,7 +61,7 @@ export default function Hero() {
 
       <div className="relative max-w-4xl mx-auto px-6 pt-10 pb-4 flex flex-col md:flex-row gap-8 items-start">
         <img
-          src={state.leadImageUrl}
+          src={leadImageUrl}
           alt={post.title}
           className="w-full md:w-1/2 rounded-xl shadow-2xl object-cover shrink-0"
           style={{ maxHeight: '220px' }}

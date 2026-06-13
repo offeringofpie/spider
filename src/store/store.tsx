@@ -11,7 +11,7 @@ class Store<T> {
     if (typeof window !== 'undefined' && window.localStorage) {
       const storedState = localStorage.getItem(this.key);
       if (storedState) {
-        this.state = JSON.parse(storedState);
+        this.state = { ...initialState, ...JSON.parse(storedState) };
       } else {
         this.state = initialState;
         this.saveState();
@@ -82,20 +82,40 @@ function useStore<T>(store: Store<T>) {
   return [state, store.setState.bind(store)] as const;
 }
 
+interface ParsedPost {
+  title: string | null;
+  content: string;
+  url: string;
+  word_count: number | null;
+  date_published: string | null;
+  lead_image_url: string | null;
+  dek: string | null;
+  excerpt: string | null;
+}
+
+interface ArchiveLink {
+  url: string;
+  label: string;
+}
+
+interface IdleDoc    { kind: 'idle' }
+interface LoadingDoc { kind: 'loading' }
+interface LoadedDoc  { kind: 'loaded'; post: ParsedPost; leadImageUrl: string | null }
+interface ErrorDoc   { kind: 'error'; message: string; archiveLinks: ArchiveLink[] }
+
+type DocumentState = IdleDoc | LoadingDoc | LoadedDoc | ErrorDoc;
+
 // Define the shape of the default state
 interface DefaultState {
   theme: string;
   font: string;
-  posts: any;
-  loading: boolean;
-  loaded: boolean;
+  document: DocumentState;
   initialized: boolean;
   isSpeaking: boolean;
   showTranslateBar: boolean;
   showSettings: boolean;
   textSize: string;
   lineHeight: string;
-  leadImageUrl: string | null;
 }
 
 // Create a default store instance
@@ -103,18 +123,19 @@ const defaultStore = new Store<DefaultState>(
   {
     theme: 'abyss',
     font: 'font-mono',
-    posts: false,
-    loading: false,
-    loaded: false,
+    document: { kind: 'idle' },
     initialized: false,
     isSpeaking: false,
     showTranslateBar: false,
     showSettings: false,
     textSize: 'text-lg',
     lineHeight: 'leading-relaxed',
-    leadImageUrl: null,
   },
   'default-state',
 );
+
+if (defaultStore.getState().document.kind === 'loading') {
+  defaultStore.setState({ document: { kind: 'idle' } });
+}
 
 export { defaultStore, useStore };

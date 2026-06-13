@@ -23,6 +23,8 @@ export default function ThemeSwitcher(props) {
       <option value="dark">Dark</option>
       <option value="dracula">Dracula</option>
       <option value="night">Night</option>
+      <option value="luxury">Luxury</option>
+      <option value="sunset">Sunset</option>
       <option value="synthwave">Synthwave</option>
       <option disabled>Light Themes</option>
       <option value="caramellatte">caramellatte</option>

@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { defaultStore, useStore } from '../store/store';
 
 export default function Toc({ htmlContent }) {
-  const [state] = useStore(defaultStore);
   const [headings, setHeadings] = useState([]);
   const [activeId, setActiveId] = useState('');
 
   useEffect(() => {
-    if (!state.loaded || !htmlContent) {
+    if (!htmlContent) {
       setHeadings([]);
       return;
     }
@@ -47,7 +45,7 @@ export default function Toc({ htmlContent }) {
       .filter((item) => item.text.length > 0);
 
     setHeadings(tocItems);
-  }, [state.loaded, htmlContent]);
+  }, [htmlContent]);
 
   useEffect(() => {
     if (headings.length === 0) return;

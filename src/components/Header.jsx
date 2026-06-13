@@ -43,71 +43,72 @@ export default function Header(props) {
 
     if (isUrl(url)) {
       try {
-        setState({ loading: true, loaded: false });
+        setState({ document: { kind: 'loading' } });
 
-        const res = await fetch(
-          `/api/parse?q=${encodeURIComponent(url)}`,
-          { headers: { accept: 'application/json' } },
-        );
+        const res = await fetch(`/api/parse?q=${encodeURIComponent(url)}`, {
+          headers: { accept: 'application/json' },
+        });
         const data = await res.json();
 
         if (res.ok && data.content) {
           setState({
-            posts: JSON.stringify(data),
-            leadImageUrl: data.lead_image_url || null,
-            error: null,
-            loading: false,
-            loaded: true,
+            document: {
+              kind: 'loaded',
+              post: data,
+              leadImageUrl: data.lead_image_url ?? null,
+            },
           });
         } else {
           setState({
-            posts: null,
-            leadImageUrl: null,
-            error: JSON.stringify(data),
-            loading: false,
-            loaded: false,
+            document: {
+              kind: 'error',
+              message: data.error ?? 'The source site returned an error.',
+              archiveLinks: data.archive_links ?? [],
+            },
           });
         }
 
         history.pushState({}, 'New Page', `?q=${encodeURIComponent(url)}`);
       } catch (err) {
         setState({
-          posts: null,
-          leadImageUrl: null,
-          error: JSON.stringify({
-            error: 'Failed to reach parser function',
-          }),
-          loading: false,
-          loaded: false,
+          document: {
+            kind: 'error',
+            message: 'Failed to reach parser.',
+            archiveLinks: [],
+          },
         });
       }
     }
-    useEffect(() => {
-      const handleKeyDown = (e) => {
-        const activeTag = document.activeElement?.tagName;
-        if (
-          activeTag === 'INPUT' ||
-          activeTag === 'TEXTAREA' ||
-          activeTag === 'SELECT'
-        ) {
-          return;
-        }
-
-        if (e.key === '/') {
-          e.preventDefault();
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          document.getElementById('url')?.focus();
-        }
-      };
-
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
   }
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const activeTag = document.activeElement?.tagName;
+      if (
+        activeTag === 'INPUT' ||
+        activeTag === 'TEXTAREA' ||
+        activeTag === 'SELECT'
+      ) {
+        return;
+      }
+
+      if (e.key === '/') {
+        e.preventDefault();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.getElementById('url')?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return isEmbedded ? (
     <header>Hello world</header>
   ) : (
-    <header className={`navbar flex content-center justify-center w-full max-w-4xl mx-auto relative z-10 ${state.loaded && state.leadImageUrl ? 'bg-transparent' : 'bg-base-100'}`}>
+    <header
+      className={`navbar flex content-center justify-center w-full max-w-4xl mx-auto relative z-10 ${state.document.kind === 'loaded' && state.document.leadImageUrl ? 'bg-transparent' : 'bg-base-100'}`}
+    >
       <div className="flex w-full max-w-6xl p-2">
         <form onSubmit={fetchData} name="submit" className="flex-1 flex">
           <div className="relative flex w-full">

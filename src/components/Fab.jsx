@@ -59,15 +59,10 @@ export default function Fab() {
   };
 
   const handleShare = async () => {
-    let title = document.title;
-    if (state.posts) {
-      try {
-        const article = JSON.parse(state.posts);
-        title = article.title || document.title;
-      } catch (err) {
-        console.error(err);
-      }
-    }
+    const title =
+      state.document.kind === 'loaded'
+        ? (state.document.post.title ?? document.title)
+        : document.title;
     if (navigator.share) {
       try {
         await navigator.share({ title, url: window.location.href });
@@ -228,7 +223,7 @@ export default function Fab() {
     setIsOpen(false);
   };
 
-  if (!state.loaded || !state.posts) return null;
+  if (state.document.kind !== 'loaded') return null;
 
   const menuTabIndex = isOpen ? 0 : -1;
 
