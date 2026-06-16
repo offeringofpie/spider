@@ -9,7 +9,7 @@ const TextSettings = () => {
         <h3 className="text-center tracking-wider">Text Size</h3>
         <select
           className="select select-primary focus:outline-0 w-full text-primary-focus hover:text-primary rounded-xl cursor-pointer"
-          value={state.textSize || 'prose-lg'}
+          value={state.textSize || 'prose-xl'}
           onChange={(e) => setState({ textSize: e.target.value })}
         >
           <option value="prose-base">Small</option>

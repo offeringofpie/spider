@@ -1,4 +1,5 @@
 import Parser from '@jocmp/mercury-parser';
+import { marked } from 'marked';
 
 export const prerender = false;
 
@@ -35,6 +36,48 @@ interface StrategyFailure {
 }
 
 type StrategyAttempt = StrategySuccess | StrategyFailure;
+
+function isMarkdown(url: URL, contentType: string): boolean {
+  return (
+    contentType.includes('text/markdown') ||
+    url.pathname.endsWith('.md') ||
+    url.searchParams.get('format') === 'md'
+  );
+}
+
+function extractDataRaw(html: string): string | null {
+  const match = html.match(/data-raw="([^"]*)"/);
+  if (!match) return null;
+  const decoded = match[1]
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
+  return decoded.length >= 200 ? decoded : null;
+}
+
+function titleFromHtml(html: string): string | null {
+  const match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  return match ? match[1].replace(/<[^>]+>/g, '').trim() || null : null;
+}
+
+function parseMarkdown(text: string, sourceUrl: string) {
+  const titleMatch = text.match(/^#\s+(.+)$/m);
+  const title = titleMatch ? titleMatch[1].trim() : null;
+
+  const content = String(marked.parse(text));
+
+  const word_count = text.split(/\s+/).filter(Boolean).length;
+
+  const excerptMatch = content.match(/<p>([\s\S]*?)<\/p>/);
+  const excerpt = excerptMatch
+    ? excerptMatch[1].replace(/<[^>]+>/g, '').trim().slice(0, 300)
+    : null;
+
+  return { title, content, url: sourceUrl, word_count, date_published: null, lead_image_url: null, dek: null, excerpt };
+}
 
 const strategies: Strategy[] = [
   {
@@ -82,10 +125,25 @@ async function tryStrategy(url: URL, strategy: Strategy): Promise<StrategyAttemp
       redirect: 'follow',
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const html = await response.text();
-    const parsed = await Parser.parse(url.href, { html, contentType: 'html' });
-    if (!parsed.content?.trim()) throw new Error('Empty content after parsing');
-    return { kind: 'success', parsed, fetchedUrl: url.href, strategyName: strategy.name, contentLength: html.length };
+    const text = await response.text();
+    const contentType = response.headers.get('content-type') ?? '';
+
+    if (isMarkdown(url, contentType)) {
+      const parsed = parseMarkdown(text, url.href);
+      if (!parsed.content?.trim()) throw new Error('Empty content after parsing');
+      return { kind: 'success', parsed, fetchedUrl: url.href, strategyName: strategy.name, contentLength: text.length };
+    }
+
+    const parsed = await Parser.parse(url.href, { html: text, contentType: 'html' });
+    if (!parsed.content?.trim()) {
+      const rawMd = extractDataRaw(text);
+      if (!rawMd) throw new Error('Empty content after parsing');
+      const mdParsed = parseMarkdown(rawMd, url.href);
+      if (!mdParsed.content?.trim()) throw new Error('Empty content after parsing');
+      if (!mdParsed.title) mdParsed.title = titleFromHtml(text);
+      return { kind: 'success', parsed: mdParsed, fetchedUrl: url.href, strategyName: strategy.name, contentLength: text.length };
+    }
+    return { kind: 'success', parsed, fetchedUrl: url.href, strategyName: strategy.name, contentLength: text.length };
   } catch (error: any) {
     return { kind: 'failure', strategyName: strategy.name, error: error.message };
   }

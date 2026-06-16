@@ -22,6 +22,13 @@ export default function Header(props) {
     }
   }, []);
 
+  function handleSubmit(e) {
+    e.preventDefault();
+    const url = e.target.querySelector('#url').value;
+    setValue(url);
+    fetchData(url);
+  }
+
   if (isEmbedded) {
     return null;
   }
@@ -34,74 +41,71 @@ export default function Header(props) {
     }
   };
 
-  async function fetchData(e) {
-    let url = typeof e === 'string' ? e : e.target.querySelector('#url').value;
+  async function fetchData(url, { forceRefresh = false } = {}) {
+    if (!isUrl(url)) return;
 
-    if (typeof e !== 'string') {
-      e.preventDefault();
-    }
+    try {
+      setState({ document: { kind: 'loading' } });
 
-    if (isUrl(url)) {
-      try {
-        setState({ document: { kind: 'loading' } });
+      const apiUrl = forceRefresh
+        ? `/api/parse?q=${encodeURIComponent(url)}&_t=${Date.now()}`
+        : `/api/parse?q=${encodeURIComponent(url)}`;
 
-        const res = await fetch(`/api/parse?q=${encodeURIComponent(url)}`, {
-          headers: { accept: 'application/json' },
+      const res = await fetch(apiUrl, {
+        headers: { accept: 'application/json' },
+      });
+      const data = await res.json();
+
+      if (res.ok && data.content) {
+        setState({
+          document: {
+            kind: 'loaded',
+            post: data,
+            leadImageUrl: data.lead_image_url ?? null,
+          },
         });
-        const data = await res.json();
-
-        if (res.ok && data.content) {
-          setState({
-            document: {
-              kind: 'loaded',
-              post: data,
-              leadImageUrl: data.lead_image_url ?? null,
-            },
-          });
-        } else {
-          setState({
-            document: {
-              kind: 'error',
-              message: data.error ?? 'The source site returned an error.',
-              archiveLinks: data.archive_links ?? [],
-            },
-          });
-        }
-
-        history.pushState({}, 'New Page', `?q=${encodeURIComponent(url)}`);
-      } catch (err) {
+      } else {
         setState({
           document: {
             kind: 'error',
-            message: 'Failed to reach parser.',
-            archiveLinks: [],
+            message: data.error ?? 'The source site returned an error.',
+            archiveLinks: data.archive_links ?? [],
           },
         });
       }
+
+      history.pushState({}, 'New Page', `?q=${encodeURIComponent(url)}`);
+    } catch (err) {
+      setState({
+        document: {
+          kind: 'error',
+          message: 'Failed to reach parser.',
+          archiveLinks: [],
+        },
+      });
     }
   }
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       const activeTag = document.activeElement?.tagName;
-      if (
-        activeTag === 'INPUT' ||
-        activeTag === 'TEXTAREA' ||
-        activeTag === 'SELECT'
-      ) {
-        return;
-      }
+      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
 
       if (e.key === '/') {
         e.preventDefault();
         window.scrollTo({ top: 0, behavior: 'smooth' });
         document.getElementById('url')?.focus();
       }
+
+      if (e.key === '?' && value) {
+        e.preventDefault();
+        fetchData(value, { forceRefresh: true });
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [value]);
 
   return isEmbedded ? (
     <header>Hello world</header>
@@ -110,7 +114,7 @@ export default function Header(props) {
       className={`navbar flex content-center justify-center w-full max-w-4xl mx-auto relative z-10 ${state.document.kind === 'loaded' && state.document.leadImageUrl ? 'bg-transparent' : 'bg-base-100'}`}
     >
       <div className="flex w-full max-w-6xl p-2">
-        <form onSubmit={fetchData} name="submit" className="flex-1 flex">
+        <form onSubmit={handleSubmit} name="submit" className="flex-1 flex">
           <div className="relative flex w-full">
             <div className="flex absolute -left-0.5 items-center pointer-events-none">
               <svg

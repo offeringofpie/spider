@@ -128,13 +128,13 @@ const defaultStore = new Store<DefaultState>(
     isSpeaking: false,
     showTranslateBar: false,
     showSettings: false,
-    textSize: 'text-lg',
+    textSize: 'prose-xl',
     lineHeight: 'leading-relaxed',
   },
   'default-state',
 );
 
-if (defaultStore.getState().document.kind === 'loading') {
+if (defaultStore.getState().document.kind !== 'idle') {
   defaultStore.setState({ document: { kind: 'idle' } });
 }
 

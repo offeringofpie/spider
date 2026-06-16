@@ -1,10 +1,18 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
 import TOC from '../components/TOC';
 
 export default function Home() {
   const [state] = useStore(defaultStore);
   const doc = state.document;
+
+  useEffect(() => {
+    if (doc.kind !== 'loaded') return;
+    document.querySelectorAll('#article-content a').forEach((a) => {
+      a.setAttribute('target', '_blank');
+      a.setAttribute('rel', 'noopener noreferrer');
+    });
+  }, [doc]);
 
   switch (doc.kind) {
     case 'idle':
@@ -59,13 +67,13 @@ export default function Home() {
 
     case 'loaded':
       return (
-        <div className="w-full mx-auto max-w-4xl text-slate-100">
+        <div className="w-full px-4 md:px-8 text-slate-100">
           <article className="text-left">
             <TOC htmlContent={doc.post.content} />
             <div
               id="article-content"
               aria-live={state.isSpeaking ? 'polite' : 'off'}
-              className={`prose prose-invert max-w-none ${state.textSize} ${state.lineHeight}
+              className={`prose prose-invert mx-auto ${state.textSize} ${state.lineHeight}
                 prose-headings:font-semibold
                 prose-headings:tracking-tight
                 prose-headings:block
