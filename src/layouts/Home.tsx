@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
 import TOC from '../components/TOC';
 

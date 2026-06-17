@@ -1,6 +1,11 @@
 import { defaultStore, useStore } from '../store/store';
 
-const SettingsButton = ({ variant = 'header', tabIndex = 0 }) => {
+interface Props {
+  variant?: 'header' | 'fab';
+  tabIndex?: number;
+}
+
+const SettingsButton = ({ variant = 'header', tabIndex = 0 }: Props) => {
   const [state, setState] = useStore(defaultStore);
 
   const toggleSettings = () => {

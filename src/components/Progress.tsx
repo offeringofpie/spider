@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 export default function Progress() {
-  const [scrolled, setScrolled] = useState(0);
+  const [scrolled, setScrolled] = useState('0%');
 
   const handleScroll = useCallback(() => {
     const scrollPx = window.scrollY;

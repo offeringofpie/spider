@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
 import SettingsButton from './SettingsButton';
 
-export default function Header(props) {
+export default function Header() {
   const [value, setValue] = useState('');
   const [state, setState] = useStore(defaultStore);
-  const [playing, setPlaying] = useState(false);
   const [isEmbedded, setIsEmbedded] = useState(false);
 
   useEffect(() => {
@@ -22,9 +21,9 @@ export default function Header(props) {
     }
   }, []);
 
-  function handleSubmit(e) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const url = e.target.querySelector('#url').value;
+    const url = e.currentTarget.querySelector<HTMLInputElement>('#url')!.value;
     setValue(url);
     fetchData(url);
   }
@@ -33,7 +32,7 @@ export default function Header(props) {
     return null;
   }
 
-  const isUrl = (string) => {
+  const isUrl = (string: string) => {
     try {
       return Boolean(new URL(string));
     } catch (e) {
@@ -41,7 +40,7 @@ export default function Header(props) {
     }
   };
 
-  async function fetchData(url, { forceRefresh = false } = {}) {
+  async function fetchData(url: string, { forceRefresh = false } = {}) {
     if (!isUrl(url)) return;
 
     try {
@@ -87,7 +86,7 @@ export default function Header(props) {
   }
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       const activeTag = document.activeElement?.tagName;
       if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
 

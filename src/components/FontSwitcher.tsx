@@ -1,11 +1,9 @@
-import { useState, useEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
 
-export default function FontSwitcher(props) {
+export default function FontSwitcher() {
   const [state, setState] = useStore(defaultStore);
-  const [font, setFont] = useState('');
 
-  const change = (e) => {
+  const change = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setState({ font: e.target.value });
   };
 

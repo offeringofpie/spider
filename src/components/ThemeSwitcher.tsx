@@ -1,12 +1,9 @@
-import { useEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
 
-// import { themeChange } from "theme-change";
-
-export default function ThemeSwitcher(props) {
+export default function ThemeSwitcher() {
   const [state, setState] = useStore(defaultStore);
 
-  const change = (e) => {
+  const change = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setState({ theme: e.target.value });
   };
   return (

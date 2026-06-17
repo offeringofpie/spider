@@ -1,7 +1,6 @@
-import React from 'react';
 import { defaultStore, useStore } from '../store/store';
 
-const readTime = (wordCount) => {
+const readTime = (wordCount: number) => {
   const wordsPerMinute = 200;
   const minutes = wordCount / wordsPerMinute;
   if (minutes < 1) {
@@ -12,7 +11,7 @@ const readTime = (wordCount) => {
   return `${roundedMinutes} minute${roundedMinutes !== 1 ? 's' : ''}`;
 };
 
-const formatDate = (dateString) => {
+const formatDate = (dateString: string) => {
   const date = new Date(dateString);
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, '0');
@@ -62,7 +61,7 @@ export default function Hero() {
       <div className="relative max-w-4xl mx-auto px-6 pt-10 pb-4 flex flex-col md:flex-row gap-8 items-start">
         <img
           src={leadImageUrl}
-          alt={post.title}
+          alt={post.title ?? ''}
           className="w-full md:w-1/2 rounded-xl shadow-2xl object-cover shrink-0"
           style={{ maxHeight: '220px' }}
         />

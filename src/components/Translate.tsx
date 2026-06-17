@@ -1,5 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { defaultStore, useStore } from '../store/store';
+
+declare global {
+  interface Window {
+    googleTranslateElementInit: () => void;
+    google: {
+      translate: {
+        TranslateElement: new (opts: { pageLanguage: string }, el: string) => unknown;
+      };
+    };
+  }
+}
 
 const LANGUAGES = [
   { code: 'en', name: 'English' },
@@ -72,7 +83,7 @@ export default function TranslateBar() {
       return;
     }
 
-    const select = document.querySelector('.goog-te-combo');
+    const select = document.querySelector<HTMLSelectElement>('.goog-te-combo');
     if (select) {
       select.value = selectedLang;
       select.dispatchEvent(

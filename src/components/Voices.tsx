@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const sortByLang = (a, b) => {
+const sortByLang = (a: SpeechSynthesisVoice, b: SpeechSynthesisVoice) => {
   const aname = a.lang.toUpperCase(),
     bname = b.lang.toUpperCase();
   if (aname < bname) return -1;
@@ -9,7 +9,7 @@ const sortByLang = (a, b) => {
 };
 
 export default function Voices() {
-  const [voices, setVoices] = useState([]);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voice, setVoice] = useState('');
   const [rate, setRate] = useState(1);
   const [pitch, setPitch] = useState(1);
@@ -45,7 +45,7 @@ export default function Voices() {
           );
         }
 
-        setVoice(selectedIndex !== -1 ? selectedIndex : 0);
+        setVoice(String(selectedIndex !== -1 ? selectedIndex : 0));
       }
     };
 
@@ -55,10 +55,10 @@ export default function Voices() {
       window.speechSynthesis.onvoiceschanged = loadVoices;
     }
 
-    if (localStorage.getItem('pitch'))
-      setPitch(parseFloat(localStorage.getItem('pitch')));
-    if (localStorage.getItem('rate'))
-      setRate(parseFloat(localStorage.getItem('rate')));
+    const savedPitch = localStorage.getItem('pitch');
+    if (savedPitch) setPitch(parseFloat(savedPitch));
+    const savedRate = localStorage.getItem('rate');
+    if (savedRate) setRate(parseFloat(savedRate));
 
     return () => {
       if (window.speechSynthesis) {
@@ -67,21 +67,21 @@ export default function Voices() {
     };
   }, []);
 
-  const updatePitch = (ev) => {
+  const updatePitch = (ev: React.ChangeEvent<HTMLInputElement>) => {
     const val = ev.target.value;
     localStorage.setItem('pitch', val);
     setPitch(parseFloat(val));
   };
 
-  const updateRate = (ev) => {
+  const updateRate = (ev: React.ChangeEvent<HTMLInputElement>) => {
     const val = ev.target.value;
     localStorage.setItem('rate', val);
     setRate(parseFloat(val));
   };
 
-  const updateVoice = (ev) => {
+  const updateVoice = (ev: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedIndex = ev.target.value;
-    localStorage.setItem('voice', voices[selectedIndex].name);
+    localStorage.setItem('voice', voices[Number(selectedIndex)].name);
     setVoice(selectedIndex);
 
     if (window.speechSynthesis.speaking) {

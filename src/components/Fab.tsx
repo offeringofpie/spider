@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { defaultStore, useStore } from '../store/store';
 import SettingsButton from './SettingsButton';
 
@@ -9,9 +9,9 @@ export default function Fab() {
   const [isEmbedded, setIsEmbedded] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
-  const synthRef = useRef(null);
-  const fabRef = useRef(null);
-  const utterancesRef = useRef([]);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+  const fabRef = useRef<HTMLDivElement | null>(null);
+  const utterancesRef = useRef<SpeechSynthesisUtterance[]>([]);
 
   const shouldReadRef = useRef(false);
 
@@ -23,7 +23,7 @@ export default function Fab() {
   }, []);
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (isOpen) setIsOpen(false);
         if (state.showSettings || state.showTranslateBar) {
@@ -32,8 +32,8 @@ export default function Fab() {
       }
     };
 
-    const handleClickOutside = (e) => {
-      if (fabRef.current && !fabRef.current.contains(e.target))
+    const handleClickOutside = (e: MouseEvent) => {
+      if (fabRef.current && !fabRef.current.contains(e.target as Node))
         setIsOpen(false);
     };
 
@@ -68,7 +68,7 @@ export default function Fab() {
         await navigator.share({ title, url: window.location.href });
         setIsOpen(false);
       } catch (err) {
-        if (err.name !== 'AbortError') copyToClipboard();
+        if ((err as Error).name !== 'AbortError') copyToClipboard();
       }
     } else {
       copyToClipboard();
@@ -81,7 +81,7 @@ export default function Fab() {
     });
   };
 
-  const scrollIntoViewIfNeeded = (el) => {
+  const scrollIntoViewIfNeeded = (el: Element | null) => {
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const isInViewport =
@@ -130,7 +130,7 @@ export default function Fab() {
       const hasBlockChildren = el.querySelector(
         'p, h1, h2, h3, h4, h5, h6, li, blockquote',
       );
-      return !hasBlockChildren && el.textContent.trim().length > 0;
+      return !hasBlockChildren && (el.textContent?.trim().length ?? 0) > 0;
     });
 
     if (initialBlocks.length === 0) return;
@@ -169,7 +169,7 @@ export default function Fab() {
         const hasBlockChildren = el.querySelector(
           'p, h1, h2, h3, h4, h5, h6, li, blockquote',
         );
-        return !hasBlockChildren && el.textContent.trim().length > 0;
+        return !hasBlockChildren && (el.textContent?.trim().length ?? 0) > 0;
       });
 
       if (currentBlockIndex >= liveBlocks.length) {
@@ -179,7 +179,7 @@ export default function Fab() {
       }
 
       const block = liveBlocks[currentBlockIndex];
-      const utterance = new SpeechSynthesisUtterance(block.textContent);
+      const utterance = new SpeechSynthesisUtterance(block.textContent ?? '');
 
       utterancesRef.current[0] = utterance;
 
@@ -212,7 +212,7 @@ export default function Fab() {
         }
       };
 
-      synthRef.current.speak(utterance);
+      synthRef.current?.speak(utterance);
     };
 
     setTimeout(speakNext, 100);
@@ -313,7 +313,7 @@ export default function Fab() {
             <button
               onClick={() => {
                 shouldReadRef.current = false;
-                synthRef.current.cancel();
+                synthRef.current?.cancel();
                 setState({ isSpeaking: false });
                 setIsPaused(false);
                 cleanUpHighlights();
@@ -334,7 +334,7 @@ export default function Fab() {
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-label="Menu"
-        className="btn btn-circle bg-primary text-primary-content hover:bg-secondary border-none h-12 w-12 transition-transform duration-300 pointer-events-auto"
+        className="btn btn-circle bg-primary/50 text-primary hover:text-secondary backdrop-blur-xs hover:bg-secondary/50 border-none h-12 w-12 transition-transform duration-300 pointer-events-auto"
       >
         <svg
           className={`w-6 h-6 transition-transform duration-300 ${isOpen ? 'rotate-135' : 'rotate-0'}`}

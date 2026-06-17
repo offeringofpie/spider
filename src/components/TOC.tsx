@@ -1,7 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
-export default function Toc({ htmlContent }) {
-  const [headings, setHeadings] = useState([]);
+interface Heading {
+  id: string;
+  text: string;
+  level: number;
+}
+
+export default function Toc({ htmlContent }: { htmlContent: string }) {
+  const [headings, setHeadings] = useState<Heading[]>([]);
   const [activeId, setActiveId] = useState('');
 
   useEffect(() => {
@@ -14,7 +20,7 @@ export default function Toc({ htmlContent }) {
     if (!articleContent) return;
 
     const elements = Array.from(
-      articleContent.querySelectorAll('h1, h2, h3, h4, .subtitle'),
+      articleContent.querySelectorAll<HTMLElement>('h1, h2, h3, h4, .subtitle'),
     );
 
     if (elements.length === 0) return;
@@ -91,7 +97,7 @@ export default function Toc({ htmlContent }) {
 
   if (headings.length < 2) return null;
 
-  const scrollToSection = (e, id) => {
+  const scrollToSection = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     const target = document.getElementById(id);
 
