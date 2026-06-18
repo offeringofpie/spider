@@ -2,17 +2,28 @@ import { useState, useEffect, useRef } from 'react';
 import { defaultStore, useStore } from '../store/store';
 import SettingsButton from './SettingsButton';
 
+const blocks = 'h1, h2, h3, h4, h5, h6, p, li, blockquote';
+
+const getReadableBlocks = () => {
+  const container =
+    document.querySelector('article') ||
+    document.querySelector('#article-content') ||
+    document.body;
+  return Array.from(container.querySelectorAll(blocks)).filter((el) => {
+    const hasBlockChildren = el.querySelector(blocks);
+    return !hasBlockChildren && (el.textContent?.trim().length ?? 0) > 0;
+  });
+};
+
 export default function Fab() {
   const [isOpen, setIsOpen] = useState(false);
   const [state, setState] = useStore(defaultStore);
   const [copied, setCopied] = useState(false);
   const [isEmbedded, setIsEmbedded] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
 
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const fabRef = useRef<HTMLDivElement | null>(null);
-  const utterancesRef = useRef<SpeechSynthesisUtterance[]>([]);
-
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const shouldReadRef = useRef(false);
 
   useEffect(() => {
@@ -23,30 +34,27 @@ export default function Fab() {
   }, []);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (isOpen) setIsOpen(false);
-        if (state.showSettings || state.showTranslateBar) {
-          setState({ showSettings: false, showTranslateBar: false });
-        }
-      }
-    };
-
-    const handleClickOutside = (e: MouseEvent) => {
+    if (!isOpen) return;
+    const handleClick = (e: MouseEvent) => {
       if (fabRef.current && !fabRef.current.contains(e.target as Node))
         setIsOpen(false);
     };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
   }, [isOpen]);
+
+  useEffect(() => {
+    const hasOpen = isOpen || state.showSettings || state.showTranslateBar;
+    if (!hasOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (isOpen) setIsOpen(false);
+      if (state.showSettings || state.showTranslateBar)
+        setState({ showSettings: false, showTranslateBar: false });
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, state.showSettings, state.showTranslateBar]);
 
   const copyToClipboard = () => {
     navigator.clipboard
@@ -81,6 +89,20 @@ export default function Fab() {
     });
   };
 
+  const stopSpeech = () => {
+    shouldReadRef.current = false;
+    synthRef.current?.cancel();
+    setState({ ttsState: 'idle' });
+    cleanUpHighlights();
+    utteranceRef.current = null;
+  };
+
+  useEffect(() => {
+    if (state.document.kind === 'loading' && state.ttsState !== 'idle') {
+      stopSpeech();
+    }
+  }, [state.document.kind]);
+
   const scrollIntoViewIfNeeded = (el: Element | null) => {
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -96,43 +118,26 @@ export default function Fab() {
   const toggleSpeech = () => {
     if (!synthRef.current) return;
 
-    if (state.isSpeaking && !isPaused) {
-      synthRef.current.pause();
-      setIsPaused(true);
-      return;
+    switch (state.ttsState) {
+      case 'speaking': {
+        synthRef.current.pause();
+        setState({ ttsState: 'paused' });
+        return;
+      }
+      case 'paused': {
+        synthRef.current.resume();
+        setState({ ttsState: 'speaking' });
+        return;
+      }
+      case 'idle':
+        break;
+      default: {
+        const _exhaustive: never = state.ttsState;
+        throw new Error(`Unhandled ttsState: ${_exhaustive}`);
+      }
     }
 
-    if (state.isSpeaking && isPaused) {
-      synthRef.current.resume();
-      setIsPaused(false);
-      return;
-    }
-
-    if (state.isSpeaking) {
-      shouldReadRef.current = false;
-      synthRef.current.cancel();
-      setState({ isSpeaking: false });
-      setIsPaused(false);
-      cleanUpHighlights();
-      return;
-    }
-
-    const initialContainer =
-      document.querySelector('article') ||
-      document.querySelector('#article-content') ||
-      document.body;
-
-    const initialBlocks = Array.from(
-      initialContainer.querySelectorAll(
-        'h1, h2, h3, h4, h5, h6, p, li, blockquote',
-      ),
-    ).filter((el) => {
-      const hasBlockChildren = el.querySelector(
-        'p, h1, h2, h3, h4, h5, h6, li, blockquote',
-      );
-      return !hasBlockChildren && (el.textContent?.trim().length ?? 0) > 0;
-    });
-
+    const initialBlocks = getReadableBlocks();
     if (initialBlocks.length === 0) return;
 
     const voiceName = localStorage.getItem('voice');
@@ -143,37 +148,23 @@ export default function Fab() {
     const rate = parseFloat(localStorage.getItem('rate') || '1');
     const pitch = parseFloat(localStorage.getItem('pitch') || '1');
 
-    setState({ isSpeaking: true });
+    setState({ ttsState: 'speaking' });
     shouldReadRef.current = true;
-    utterancesRef.current = [];
+    utteranceRef.current = null;
 
     let currentBlockIndex = 0;
 
     const speakNext = () => {
       if (!shouldReadRef.current) {
-        setState({ isSpeaking: false });
+        setState({ ttsState: 'idle' });
         cleanUpHighlights();
         return;
       }
 
-      const liveContainer =
-        document.querySelector('article') ||
-        document.querySelector('#article-content') ||
-        document.body;
-
-      const liveBlocks = Array.from(
-        liveContainer.querySelectorAll(
-          'h1, h2, h3, h4, h5, h6, p, li, blockquote',
-        ),
-      ).filter((el) => {
-        const hasBlockChildren = el.querySelector(
-          'p, h1, h2, h3, h4, h5, h6, li, blockquote',
-        );
-        return !hasBlockChildren && (el.textContent?.trim().length ?? 0) > 0;
-      });
+      const liveBlocks = getReadableBlocks();
 
       if (currentBlockIndex >= liveBlocks.length) {
-        setState({ isSpeaking: false });
+        setState({ ttsState: 'idle' });
         cleanUpHighlights();
         return;
       }
@@ -181,7 +172,7 @@ export default function Fab() {
       const block = liveBlocks[currentBlockIndex];
       const utterance = new SpeechSynthesisUtterance(block.textContent ?? '');
 
-      utterancesRef.current[0] = utterance;
+      utteranceRef.current = utterance;
 
       if (selectedVoice) utterance.voice = selectedVoice;
       utterance.rate = rate;
@@ -190,10 +181,6 @@ export default function Fab() {
       cleanUpHighlights();
       block.classList.add('tts');
       scrollIntoViewIfNeeded(block);
-
-      utterance.onstart = () => {
-        block.classList.add('tts');
-      };
 
       utterance.onend = () => {
         currentBlockIndex++;
@@ -242,7 +229,7 @@ export default function Fab() {
           onClick={handleShare}
           tabIndex={menuTabIndex}
           aria-label="Share Article"
-          className="bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14"
+          className="bg-base-300/50 backdrop-blur-xs border border-base-200 text-base-content hover:bg-base-300/70 rounded-full flex items-center gap-2 pl-5 pr-2 h-14 transition-all"
         >
           <span className="text-sm font-medium">
             {copied ? 'Link Copied!' : 'Share'}
@@ -259,7 +246,7 @@ export default function Fab() {
           onClick={toggleTranslateBar}
           tabIndex={menuTabIndex}
           aria-label="Translate Article"
-          className="bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14"
+          className="bg-base-300/50 backdrop-blur-xs border border-base-200 text-base-content hover:bg-base-300/70 rounded-full flex items-center gap-2 pl-5 pr-2 h-14 transition-all"
         >
           <span className="text-sm font-medium">Translate</span>
           <div className="bg-primary/10 text-primary rounded-full p-2">
@@ -268,12 +255,12 @@ export default function Fab() {
             </svg>
           </div>
         </button>
-        {!state.isSpeaking ? (
+        {state.ttsState === 'idle' ? (
           <button
             onClick={toggleSpeech}
             tabIndex={menuTabIndex}
             aria-label="Read Article Aloud"
-            className="bg-base-100 text-base-content hover:bg-base-200 border-none rounded-full flex items-center gap-2 pl-5 pr-2 h-14"
+            className="bg-base-300/50 backdrop-blur-xs border border-base-200 text-base-content hover:bg-base-300/70 rounded-full flex items-center gap-2 pl-5 pr-2 h-14 transition-all"
           >
             <span className="text-sm font-medium">Text-to-Speech</span>
             <div className="bg-secondary/10 text-secondary rounded-full p-2">
@@ -283,16 +270,16 @@ export default function Fab() {
             </div>
           </button>
         ) : (
-          <div className="bg-base-100 text-base-content rounded-full flex items-center gap-2 pl-5 pr-2 h-14 pointer-events-auto">
+          <div className="bg-base-300/50 backdrop-blur-xs border border-base-200 text-base-content hover:bg-base-300/70 rounded-full flex items-center gap-2 pl-5 pr-2 h-14 transition-all">
             <span className="text-sm font-medium pr-2">
-              {isPaused ? 'Paused' : 'Reading'}
+              {state.ttsState === 'paused' ? 'Paused' : 'Reading'}
             </span>
             <button
               onClick={toggleSpeech}
-              aria-label={isPaused ? 'Resume' : 'Pause'}
+              aria-label={state.ttsState === 'paused' ? 'Resume' : 'Pause'}
               className="btn-circle btn-sm bg-secondary/10 text-secondary h-10 w-10 flex items-center justify-center"
             >
-              {isPaused ? (
+              {state.ttsState === 'paused' ? (
                 <svg
                   viewBox="0 0 24 24"
                   fill="currentColor"
@@ -311,14 +298,7 @@ export default function Fab() {
               )}
             </button>
             <button
-              onClick={() => {
-                shouldReadRef.current = false;
-                synthRef.current?.cancel();
-                setState({ isSpeaking: false });
-                setIsPaused(false);
-                cleanUpHighlights();
-                utterancesRef.current = [];
-              }}
+              onClick={stopSpeech}
               aria-label="Stop"
               className="btn btn-circle btn-sm bg-error/10 text-error h-10 w-10 flex items-center justify-center ml-1"
             >
@@ -334,7 +314,7 @@ export default function Fab() {
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-label="Menu"
-        className="btn btn-circle bg-primary/50 text-primary hover:text-secondary backdrop-blur-xs hover:bg-secondary/50 border-none h-12 w-12 transition-transform duration-300 pointer-events-auto"
+        className="btn btn-circle bg-primary/10 text-primary hover:text-secondary backdrop-blur-xs hover:bg-secondary/10 border-none h-12 w-12 transition-all duration-300 pointer-events-auto"
       >
         <svg
           className={`w-6 h-6 transition-transform duration-300 ${isOpen ? 'rotate-135' : 'rotate-0'}`}

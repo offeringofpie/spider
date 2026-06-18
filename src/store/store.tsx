@@ -105,13 +105,15 @@ interface ErrorDoc   { kind: 'error'; message: string; archiveLinks: ArchiveLink
 
 type DocumentState = IdleDoc | LoadingDoc | LoadedDoc | ErrorDoc;
 
+type TtsState = 'idle' | 'speaking' | 'paused';
+
 // Define the shape of the default state
 interface DefaultState {
   theme: string;
   font: string;
   document: DocumentState;
   initialized: boolean;
-  isSpeaking: boolean;
+  ttsState: TtsState;
   showTranslateBar: boolean;
   showSettings: boolean;
   textSize: string;
@@ -125,7 +127,7 @@ const defaultStore = new Store<DefaultState>(
     font: 'font-mono',
     document: { kind: 'idle' },
     initialized: false,
-    isSpeaking: false,
+    ttsState: 'idle',
     showTranslateBar: false,
     showSettings: false,
     textSize: 'prose-xl',

@@ -72,7 +72,7 @@ export default function Home() {
             <TOC htmlContent={doc.post.content} />
             <div
               id="article-content"
-              aria-live={state.isSpeaking ? 'polite' : 'off'}
+              aria-live={state.ttsState !== 'idle' ? 'polite' : 'off'}
               className={`prose prose-invert mx-auto ${state.textSize} ${state.lineHeight}
                 prose-headings:font-semibold
                 prose-headings:tracking-tight
