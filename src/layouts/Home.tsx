@@ -67,7 +67,7 @@ export default function Home() {
 
     case 'loaded':
       return (
-        <div className="w-full px-4 md:px-8 text-slate-100">
+        <div className="w-full px-3 text-slate-100">
           <article className="text-left">
             <TOC htmlContent={doc.post.content} />
             <div
