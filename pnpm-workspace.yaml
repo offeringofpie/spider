@@ -5,3 +5,8 @@ allowBuilds:
   netlify-cli: true
   sharp: true
   unix-dgram: true
+minimumReleaseAgeExclude:
+  - '@astrojs/markdown-satteri@0.3.1'
+  - '@astrojs/netlify@8.0.0'
+  - '@astrojs/react@6.0.0'
+  - astro@7.0.0
