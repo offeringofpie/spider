@@ -1,5 +1,15 @@
 import Parser from '@jocmp/mercury-parser';
-import { marked } from 'marked';
+import { preserveMediaEmbeds, restoreMediaEmbeds } from '../../lib/embed';
+import {
+  ampUrl,
+  botChallenge,
+  extractDataRaw,
+  isMarkdown,
+  parseMarkdown,
+  paywall,
+  stripAtLinks,
+  titleFromHtml,
+} from '../../lib/helpers';
 
 export const prerender = false;
 
@@ -19,10 +29,21 @@ interface Strategy {
   name: string;
   matches: (url: URL) => boolean;
   headers: Record<string, string>;
+  rewrite?: (url: URL) => Promise<string> | string;
+  timeout?: number;
 }
 
 interface StrategySuccess {
   kind: 'success';
+  parsed: Awaited<ReturnType<typeof Parser.parse>>;
+  fetchedUrl: string;
+  strategyName: string;
+  contentLength: number;
+  paywalled: boolean;
+}
+
+interface StrategyPartial {
+  kind: 'partial';
   parsed: Awaited<ReturnType<typeof Parser.parse>>;
   fetchedUrl: string;
   strategyName: string;
@@ -35,56 +56,17 @@ interface StrategyFailure {
   error: string;
 }
 
-type StrategyAttempt = StrategySuccess | StrategyFailure;
-
-function isMarkdown(url: URL, contentType: string): boolean {
-  return (
-    contentType.includes('text/markdown') ||
-    url.pathname.endsWith('.md') ||
-    url.searchParams.get('format') === 'md'
-  );
-}
-
-function extractDataRaw(html: string): string | null {
-  const match = html.match(/data-raw="([^"]*)"/);
-  if (!match) return null;
-  const decoded = match[1]
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'");
-  return decoded.length >= 200 ? decoded : null;
-}
-
-function titleFromHtml(html: string): string | null {
-  const match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-  return match ? match[1].replace(/<[^>]+>/g, '').trim() || null : null;
-}
-
-function parseMarkdown(text: string, sourceUrl: string) {
-  const titleMatch = text.match(/^#\s+(.+)$/m);
-  const title = titleMatch ? titleMatch[1].trim() : null;
-
-  const content = String(marked.parse(text));
-
-  const word_count = text.split(/\s+/).filter(Boolean).length;
-
-  const excerptMatch = content.match(/<p>([\s\S]*?)<\/p>/);
-  const excerpt = excerptMatch
-    ? excerptMatch[1].replace(/<[^>]+>/g, '').trim().slice(0, 300)
-    : null;
-
-  return { title, content, url: sourceUrl, word_count, date_published: null, lead_image_url: null, dek: null, excerpt };
-}
+type StrategyAttempt = StrategySuccess | StrategyPartial | StrategyFailure;
 
 const strategies: Strategy[] = [
   {
     name: 'googlebot',
-    matches: (url) => ['.be', '.nl', '.fr', '.de'].some((tld) => url.hostname.endsWith(tld)),
+    matches: (url) => {
+      return ['.be', '.nl', '.fr', '.de', '.pt'].some((tld) => url.hostname.endsWith(tld));
+    },
     headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+      'User-Agent':
+        'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'Accept-Language': 'en-US,en;q=0.5',
     },
@@ -98,13 +80,39 @@ const strategies: Strategy[] = [
       Referer: 'https://www.google.com/',
     },
   },
+  {
+    name: 'wayback',
+    matches: () => false,
+    rewrite: async (url) => {
+      const response = await fetch(
+        `https://archive.org/wayback/available?url=${encodeURIComponent(url.href)}`,
+        { signal: AbortSignal.timeout(2000) },
+      );
+      if (!response.ok)
+        throw new Error(`Wayback check failed: HTTP ${response.status}`);
+      const data = (await response.json()) as {
+        archived_snapshots?: {
+          closest?: { available?: boolean; url?: string };
+        };
+      };
+      const closest = data?.archived_snapshots?.closest;
+      if (!closest?.available) throw new Error('No Wayback snapshot available');
+      return (closest.url as string).replace(/\/web\/(\d+)\//, '/web/$1if_/');
+    },
+    timeout: 6000,
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    },
+  },
 ];
 
 async function fetchWithRetry(
   fetchUrl: string,
   options: RequestInit,
   retries = 2,
-  backoff = 500
+  backoff = 500,
 ): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     const response = await fetch(fetchUrl, options);
@@ -112,16 +120,21 @@ async function fetchWithRetry(
     const retryAfter = response.headers.get('Retry-After');
     const delay = retryAfter ? parseInt(retryAfter) * 1000 : backoff;
     console.warn(`429 received, retrying in ${delay}ms...`);
-    await new Promise((res) => setTimeout(res, delay));
+    await new Promise((resolve) => setTimeout(resolve, delay));
   }
   throw new Error('HTTP 429: Too Many Requests');
 }
 
-async function tryStrategy(url: URL, strategy: Strategy): Promise<StrategyAttempt> {
+async function tryStrategy(
+  url: URL,
+  strategy: Strategy,
+): Promise<StrategyAttempt> {
   try {
-    const response = await fetchWithRetry(url.href, {
+    const fetchUrl = (await strategy.rewrite?.(url)) ?? url.href;
+    const timeout = strategy.timeout ?? 4500;
+    const response = await fetchWithRetry(fetchUrl, {
       headers: strategy.headers,
-      signal: AbortSignal.timeout(4500),
+      signal: AbortSignal.timeout(timeout),
       redirect: 'follow',
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -130,22 +143,104 @@ async function tryStrategy(url: URL, strategy: Strategy): Promise<StrategyAttemp
 
     if (isMarkdown(url, contentType)) {
       const parsed = parseMarkdown(text, url.href);
-      if (!parsed.content?.trim()) throw new Error('Empty content after parsing');
-      return { kind: 'success', parsed, fetchedUrl: url.href, strategyName: strategy.name, contentLength: text.length };
+      if (!parsed.content?.trim())
+        throw new Error('Empty content after parsing');
+      return {
+        kind: 'success',
+        parsed,
+        fetchedUrl: fetchUrl,
+        strategyName: strategy.name,
+        contentLength: text.length,
+        paywalled: false,
+      };
     }
 
-    const parsed = await Parser.parse(url.href, { html: text, contentType: 'html' });
-    if (!parsed.content?.trim()) {
-      const rawMd = extractDataRaw(text);
-      if (!rawMd) throw new Error('Empty content after parsing');
-      const mdParsed = parseMarkdown(rawMd, url.href);
-      if (!mdParsed.content?.trim()) throw new Error('Empty content after parsing');
-      if (!mdParsed.title) mdParsed.title = titleFromHtml(text);
-      return { kind: 'success', parsed: mdParsed, fetchedUrl: url.href, strategyName: strategy.name, contentLength: text.length };
+    const parsed = await Parser.parse(url.href, {
+      html: stripAtLinks(preserveMediaEmbeds(text)),
+      contentType: 'html',
+    });
+    if (parsed.content) parsed.content = restoreMediaEmbeds(parsed.content);
+    const content = parsed.content?.trim();
+
+    if (botChallenge(text, parsed.title ?? null)) {
+      throw new Error('Bot challenge detected');
     }
-    return { kind: 'success', parsed, fetchedUrl: url.href, strategyName: strategy.name, contentLength: text.length };
-  } catch (error: any) {
-    return { kind: 'failure', strategyName: strategy.name, error: error.message };
+
+    const paywallDetected = paywall(text, parsed);
+
+    if (content && !paywallDetected) {
+      return {
+        kind: 'success',
+        parsed,
+        fetchedUrl: fetchUrl,
+        strategyName: strategy.name,
+        contentLength: text.length,
+        paywalled: false,
+      };
+    }
+
+    if (paywallDetected) {
+      const ampHref = ampUrl(text, url);
+      if (ampHref) {
+        const ampResponse = await fetchWithRetry(ampHref, {
+          headers: strategy.headers,
+          signal: AbortSignal.timeout(timeout),
+          redirect: 'follow',
+        });
+        if (ampResponse.ok) {
+          const ampText = await ampResponse.text();
+          const ampParsed = await Parser.parse(ampHref, {
+            html: ampText,
+            contentType: 'html',
+          });
+          if (ampParsed.content?.trim() && !paywall(ampText, ampParsed)) {
+            return {
+              kind: 'success',
+              parsed: ampParsed,
+              fetchedUrl: ampHref,
+              strategyName: strategy.name,
+              contentLength: ampText.length,
+              paywalled: false,
+            };
+          }
+        }
+      }
+      if (content) {
+        return {
+          kind: 'partial',
+          parsed,
+          fetchedUrl: fetchUrl,
+          strategyName: strategy.name,
+          contentLength: text.length,
+        };
+      }
+    }
+
+    const rawMd = extractDataRaw(text);
+    if (rawMd) {
+      const mdParsed = parseMarkdown(rawMd, url.href);
+      if (mdParsed.content?.trim()) {
+        if (!mdParsed.title) mdParsed.title = titleFromHtml(text);
+        return {
+          kind: 'success',
+          parsed: mdParsed,
+          fetchedUrl: fetchUrl,
+          strategyName: strategy.name,
+          contentLength: text.length,
+          paywalled: false,
+        };
+      }
+    }
+
+    throw new Error(
+      paywallDetected ? 'Paywall detected' : 'Empty content after parsing',
+    );
+  } catch (error) {
+    return {
+      kind: 'failure',
+      strategyName: strategy.name,
+      error: (error as Error).message,
+    };
   }
 }
 
@@ -156,8 +251,11 @@ export async function GET({ request }: { request: Request }) {
 
   if (!urlString) {
     return new Response(
-      JSON.stringify({ error: 'Invalid/No URL provided', usage: 'Add ?q=URL_TO_PARSE' }),
-      { status: 400, headers: corsHeaders }
+      JSON.stringify({
+        error: 'Invalid/No URL provided',
+        usage: 'Add ?q=URL_TO_PARSE',
+      }),
+      { status: 400, headers: corsHeaders },
     );
   }
 
@@ -167,7 +265,14 @@ export async function GET({ request }: { request: Request }) {
   } catch {
     return new Response(
       JSON.stringify({ error: 'Invalid URL format', provided: urlString }),
-      { status: 400, headers: corsHeaders }
+      { status: 400, headers: corsHeaders },
+    );
+  }
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return new Response(
+      JSON.stringify({ error: 'Only http and https URLs are supported', provided: urlString }),
+      { status: 400, headers: corsHeaders },
     );
   }
 
@@ -180,7 +285,9 @@ export async function GET({ request }: { request: Request }) {
     selected = [strategies.find((s) => s.name === strategyParam) ?? fallback];
   }
 
+  let bestPartial: StrategyPartial | null = null;
   let lastFailure: StrategyFailure | null = null;
+  let botChallengeDetected = false;
   for (const strategy of selected) {
     const result = await tryStrategy(url, strategy);
     if (result.kind === 'success') {
@@ -192,26 +299,53 @@ export async function GET({ request }: { request: Request }) {
             fetchedUrl: result.fetchedUrl,
             strategy: result.strategyName,
             contentLength: result.contentLength,
+            paywalled: result.paywalled,
           },
         }),
-        { status: 200, headers: cacheHeaders }
+        { status: 200, headers: cacheHeaders },
       );
     }
-    console.warn(`Strategy '${result.strategyName}' failed:`, result.error);
-    lastFailure = result;
+    if (result.kind === 'partial') {
+      if (!bestPartial) bestPartial = result;
+    } else {
+      if (result.error === 'Bot challenge detected')
+        botChallengeDetected = true;
+      console.warn(`Strategy '${result.strategyName}' failed:`, result.error);
+      lastFailure = result;
+    }
+  }
+
+  if (bestPartial) {
+    return new Response(
+      JSON.stringify({
+        ...bestPartial.parsed,
+        meta: {
+          originalUrl: url.href,
+          fetchedUrl: bestPartial.fetchedUrl,
+          strategy: bestPartial.strategyName,
+          contentLength: bestPartial.contentLength,
+          paywalled: true,
+        },
+      }),
+      { status: 200, headers: cacheHeaders },
+    );
   }
 
   return new Response(
     JSON.stringify({
       error: lastFailure?.error ?? 'All strategies failed.',
       url: url.href,
-      suggestion: 'Try accessing the article via one of the archive links below.',
+      suggestion: botChallengeDetected
+        ? 'This page blocked automated access. Try an archived version below.'
+        : 'Try accessing the article via one of the archive links below.',
       archive_links: [
-        { label: 'Wayback Machine snapshots', url: `https://web.archive.org/web/*/${url.href}` },
-        { label: 'archive.ph (newest)', url: `https://archive.ph/newest/${url.href}` },
+        {
+          label: 'Wayback Machine snapshots',
+          url: `https://web.archive.org/web/*/${url.href}`,
+        },
       ],
     }),
-    { status: 500, headers: corsHeaders }
+    { status: 500, headers: corsHeaders },
   );
 }
 
