@@ -25,12 +25,11 @@ export default function Fab() {
   const fabRef = useRef<HTMLDivElement | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const shouldReadRef = useRef(false);
+  const restartingRef = useRef(false);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      synthRef.current = window.speechSynthesis;
-      setIsEmbedded(document.documentElement.dataset.embedded === 'true');
-    }
+    synthRef.current = window.speechSynthesis;
+    setIsEmbedded(document.documentElement.dataset.embedded === 'true');
   }, []);
 
   useEffect(() => {
@@ -56,21 +55,18 @@ export default function Fab() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, state.showSettings, state.showTranslateBar]);
 
-  const copyToClipboard = () => {
-    navigator.clipboard
-      .writeText(window.location.href)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      })
-      .catch((err) => console.error('Failed to copy: ', err));
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+    }
   };
 
   const handleShare = async () => {
-    const title =
-      state.document.kind === 'loaded'
-        ? (state.document.post.title ?? document.title)
-        : document.title;
+    const title = post.title ?? document.title;
     if (navigator.share) {
       try {
         await navigator.share({ title, url: window.location.href });
@@ -83,7 +79,7 @@ export default function Fab() {
     }
   };
 
-  const cleanUpHighlights = () => {
+  const clearHighlights = () => {
     document.querySelectorAll('.tts').forEach((el) => {
       el.classList.remove('tts');
     });
@@ -93,7 +89,7 @@ export default function Fab() {
     shouldReadRef.current = false;
     synthRef.current?.cancel();
     setState({ ttsState: 'idle' });
-    cleanUpHighlights();
+    clearHighlights();
     utteranceRef.current = null;
   };
 
@@ -102,6 +98,23 @@ export default function Fab() {
       stopSpeech();
     }
   }, [state.document.kind]);
+
+  useEffect(() => {
+    return () => {
+      shouldReadRef.current = false;
+      synthRef.current?.cancel();
+    };
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      if (!shouldReadRef.current || !synthRef.current?.speaking) return;
+      restartingRef.current = true;
+      synthRef.current.cancel();
+    };
+    window.addEventListener('tts-settings-change', handler);
+    return () => window.removeEventListener('tts-settings-change', handler);
+  }, []);
 
   const scrollIntoViewIfNeeded = (el: Element | null) => {
     if (!el) return;
@@ -140,14 +153,6 @@ export default function Fab() {
     const initialBlocks = getReadableBlocks();
     if (initialBlocks.length === 0) return;
 
-    const voiceName = localStorage.getItem('voice');
-    const voices = synthRef.current.getVoices();
-    const selectedVoice = voiceName
-      ? voices.find((v) => v.name === voiceName)
-      : null;
-    const rate = parseFloat(localStorage.getItem('rate') || '1');
-    const pitch = parseFloat(localStorage.getItem('pitch') || '1');
-
     setState({ ttsState: 'speaking' });
     shouldReadRef.current = true;
     utteranceRef.current = null;
@@ -157,7 +162,7 @@ export default function Fab() {
     const speakNext = () => {
       if (!shouldReadRef.current) {
         setState({ ttsState: 'idle' });
-        cleanUpHighlights();
+        clearHighlights();
         return;
       }
 
@@ -165,7 +170,7 @@ export default function Fab() {
 
       if (currentBlockIndex >= liveBlocks.length) {
         setState({ ttsState: 'idle' });
-        cleanUpHighlights();
+        clearHighlights();
         return;
       }
 
@@ -174,15 +179,26 @@ export default function Fab() {
 
       utteranceRef.current = utterance;
 
+      const voiceName = localStorage.getItem('voice');
+      const voices = synthRef.current?.getVoices() ?? [];
+      const selectedVoice = voiceName
+        ? voices.find((v) => v.name === voiceName)
+        : null;
       if (selectedVoice) utterance.voice = selectedVoice;
-      utterance.rate = rate;
-      utterance.pitch = pitch;
+      utterance.rate = parseFloat(localStorage.getItem('rate') || '1');
+      utterance.pitch = parseFloat(localStorage.getItem('pitch') || '1');
+      utterance.volume = parseFloat(localStorage.getItem('volume') || '1');
 
-      cleanUpHighlights();
+      clearHighlights();
       block.classList.add('tts');
       scrollIntoViewIfNeeded(block);
 
       utterance.onend = () => {
+        if (restartingRef.current) {
+          restartingRef.current = false;
+          setTimeout(speakNext, 50);
+          return;
+        }
         currentBlockIndex++;
         if (shouldReadRef.current) {
           setTimeout(speakNext, 50);
@@ -190,12 +206,15 @@ export default function Fab() {
       };
 
       utterance.onerror = (e) => {
-        if (e.error !== 'canceled') {
+        if (e.error === 'canceled' && restartingRef.current) {
+          restartingRef.current = false;
+          setTimeout(speakNext, 50);
+        } else if (e.error !== 'canceled') {
           console.error('TTS Error:', e);
           currentBlockIndex++;
           if (shouldReadRef.current) setTimeout(speakNext, 50);
         } else {
-          cleanUpHighlights();
+          clearHighlights();
         }
       };
 
@@ -211,6 +230,7 @@ export default function Fab() {
   };
 
   if (state.document.kind !== 'loaded') return null;
+  const { post } = state.document;
 
   const menuTabIndex = isOpen ? 0 : -1;
 
@@ -255,60 +275,74 @@ export default function Fab() {
             </svg>
           </div>
         </button>
-        {state.ttsState === 'idle' ? (
-          <button
-            onClick={toggleSpeech}
-            tabIndex={menuTabIndex}
-            aria-label="Read Article Aloud"
-            className="bg-base-300/50 backdrop-blur-xs border border-base-200 text-base-content hover:bg-base-300/70 rounded-full flex items-center gap-2 pl-5 pr-2 h-14 transition-all"
-          >
-            <span className="text-sm font-medium">Text-to-Speech</span>
-            <div className="bg-secondary/10 text-secondary rounded-full p-2">
-              <svg className="w-5 h-5" viewBox="0 0 32 32">
-                <use href="#mic" />
-              </svg>
-            </div>
-          </button>
-        ) : (
-          <div className="bg-base-300/50 backdrop-blur-xs border border-base-200 text-base-content hover:bg-base-300/70 rounded-full flex items-center gap-2 pl-5 pr-2 h-14 transition-all">
-            <span className="text-sm font-medium pr-2">
-              {state.ttsState === 'paused' ? 'Paused' : 'Reading'}
-            </span>
+        {state.ttsState === 'idle' && (
+          <div className="flex items-center gap-1">
             <button
               onClick={toggleSpeech}
-              aria-label={state.ttsState === 'paused' ? 'Resume' : 'Pause'}
-              className="btn-circle btn-sm bg-secondary/10 text-secondary h-10 w-10 flex items-center justify-center"
+              tabIndex={menuTabIndex}
+              aria-label="Read Article Aloud"
+              className="bg-base-300/50 backdrop-blur-xs border border-base-200 text-base-content hover:bg-base-300/70 rounded-full flex items-center gap-2 pl-5 pr-2 h-14 transition-all"
             >
-              {state.ttsState === 'paused' ? (
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="w-5 h-5 ml-0.5"
-                >
-                  <use href="#play" />
+              <span className="text-sm font-medium">Text-to-Speech</span>
+              <div className="bg-secondary/10 text-secondary rounded-full p-2">
+                <svg className="w-5 h-5" viewBox="0 0 32 32">
+                  <use href="#mic" />
                 </svg>
-              ) : (
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="w-5 h-5"
-                >
-                  <use href="#pause" />
-                </svg>
-              )}
+              </div>
             </button>
             <button
-              onClick={stopSpeech}
-              aria-label="Stop"
-              className="btn btn-circle btn-sm bg-error/10 text-error h-10 w-10 flex items-center justify-center ml-1"
+              onClick={() => {
+                setState({ showSettings: true });
+                setIsOpen(false);
+              }}
+              tabIndex={menuTabIndex}
+              aria-label="Voice & speed settings"
+              title="Voice & speed settings"
+              className="bg-base-300/50 backdrop-blur-xs border border-base-200 text-base-content/60 hover:text-secondary hover:bg-base-300/70 rounded-full h-14 w-14 flex items-center justify-center transition-all shrink-0"
             >
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                <use href="#stop" />
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <use href="#controls" />
               </svg>
             </button>
           </div>
         )}
       </div>
+
+      {state.ttsState !== 'idle' && (
+        <div className="bg-base-300/50 backdrop-blur-xs border border-base-200 text-base-content rounded-full flex items-center gap-2 pl-5 pr-2 h-14 transition-all">
+          <span className="text-sm font-medium pr-2">
+            {state.ttsState === 'paused' ? 'Paused' : 'Reading'}
+          </span>
+          <button
+            onClick={toggleSpeech}
+            aria-label={state.ttsState === 'paused' ? 'Resume' : 'Pause'}
+            className="btn-circle btn-sm bg-secondary/10 text-secondary h-10 w-10 flex items-center justify-center"
+          >
+            {state.ttsState === 'paused' ? (
+              <svg
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="w-5 h-5 ml-0.5"
+              >
+                <use href="#play" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <use href="#pause" />
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={stopSpeech}
+            aria-label="Stop"
+            className="btn btn-circle btn-sm bg-error/10 text-error h-10 w-10 flex items-center justify-center ml-1"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+              <use href="#stop" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       <button
         onClick={() => setIsOpen(!isOpen)}

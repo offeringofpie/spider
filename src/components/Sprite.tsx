@@ -98,6 +98,22 @@ export default function Sprite() {
           c47.71,0,86.388-38.674,86.388-86.384C342.386,249.014,303.708,210.339,255.999,210.339z"
         />
       </symbol>
+      <symbol
+        id="controls"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <line x1="4" y1="6" x2="16" y2="6" />
+        <line x1="8" y1="12" x2="20" y2="12" />
+        <line x1="4" y1="18" x2="16" y2="18" />
+        <circle cx="18" cy="6" r="2" />
+        <circle cx="6" cy="12" r="2" />
+        <circle cx="18" cy="18" r="2" />
+      </symbol>
     </svg>
   );
 }
