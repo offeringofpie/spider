@@ -1,5 +1,4 @@
 @import 'tailwindcss';
-@config "../../tailwind.config.js";
 @plugin "@tailwindcss/typography";
 @plugin "daisyui" {
   themes: all;
@@ -25,24 +24,6 @@ body {
     sans-serif;
 }
 
-body {
-  top: 0 !important;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  100% {
-    transform: rotate(1turn);
-  }
-}
-
 .tts {
   background-color: var(--color-primary) !important;
   color: var(--color-primary-content) !important;
@@ -58,6 +39,7 @@ body {
 .goog-text-highlight {
   background-color: transparent !important;
   box-shadow: none !important;
+  border: none !important;
 }
 
 .goog-te-balloon-frame,
@@ -65,12 +47,6 @@ body {
 .goog-te-balloon-frame.skiptranslate {
   display: none !important;
   visibility: hidden !important;
-}
-
-.goog-text-highlight {
-  background-color: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
 }
 
 .skiptranslate {
