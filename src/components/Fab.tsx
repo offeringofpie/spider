@@ -316,7 +316,7 @@ export default function Fab() {
           <button
             onClick={toggleSpeech}
             aria-label={state.ttsState === 'paused' ? 'Resume' : 'Pause'}
-            className="btn-circle btn-sm bg-secondary/10 text-secondary h-10 w-10 flex items-center justify-center"
+            className="btn-circle btn-sm bg-secondary/10 text-secondary h-11 w-11 flex items-center justify-center"
           >
             {state.ttsState === 'paused' ? (
               <svg
@@ -335,7 +335,7 @@ export default function Fab() {
           <button
             onClick={stopSpeech}
             aria-label="Stop"
-            className="btn btn-circle btn-sm bg-error/10 text-error h-10 w-10 flex items-center justify-center ml-1"
+            className="btn btn-circle btn-sm bg-error/10 text-error h-11 w-11 flex items-center justify-center ml-1"
           >
             <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
               <use href="#stop" />

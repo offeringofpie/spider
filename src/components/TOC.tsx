@@ -180,7 +180,6 @@ export default function Toc({ htmlContent }: { htmlContent: string }) {
             </svg>
           </div>
 
-          {}
           <ul className="flex flex-col gap-3 w-full relative">
             {headings.map((h) => {
               const isActive = activeId === h.id;
@@ -188,16 +187,23 @@ export default function Toc({ htmlContent }: { htmlContent: string }) {
               return (
                 <li
                   key={`desktop-${h.id}`}
-                  className="flex items-center justify-end w-full cursor-pointer py-1"
-                  onClick={(e) => scrollToSection(e, h.id)}
+                  className="flex items-center justify-end w-full"
                 >
-                  <div
-                    className={`
-                    w-3 h-0.5 z-10 shrink-0 transition-all duration-300 shadow-sm 
-                    ${isActive ? 'bg-primary scale-125' : 'bg-secondary/30 hover:bg-secondary'}
-                    mr-4
-                  `}
-                  />
+                  <a
+                    href={`#${h.id}`}
+                    aria-label={h.text}
+                    aria-current={isActive ? 'location' : undefined}
+                    onClick={(e) => scrollToSection(e, h.id)}
+                    className="flex items-center justify-end w-full py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                  >
+                    <div
+                      className={`
+                      w-3 h-0.5 z-10 shrink-0 transition-all duration-300 shadow-sm
+                      ${isActive ? 'bg-primary scale-125' : 'bg-secondary/30 hover:bg-secondary'}
+                      mr-4
+                    `}
+                    />
+                  </a>
                 </li>
               );
             })}

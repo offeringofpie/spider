@@ -20,7 +20,7 @@ export default function Home() {
 
     case 'loading':
       return (
-        <div className="w-full mx-auto max-w-4xl text-slate-100">
+        <div role="status" aria-label="Loading article..." className="w-full mx-auto max-w-4xl text-base-content">
           <article className="text-left">
             <div className="mt-4 flex w-full max-w-2xl flex-col gap-4 mx-auto py-6">
               <div className="skeleton bg-neutral-content h-32 w-full"></div>
@@ -34,15 +34,15 @@ export default function Home() {
 
     case 'error':
       return (
-        <div className="w-full mx-auto max-w-4xl px-4 text-slate-100">
+        <div className="w-full mx-auto max-w-4xl px-4 text-base-content">
           <article className="text-left">
             <h1 className="font-semibold tracking-tight text-2xl text-error mb-4">
               Could not render this article
             </h1>
-            <p className="mb-4 text-sm text-slate-300">{doc.message}</p>
+            <p className="mb-4 text-sm text-base-content/80">{doc.message}</p>
             {doc.archiveLinks.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm text-slate-300">
+                <p className="text-sm text-base-content/80">
                   You can try opening from these archives:
                 </p>
                 <ul className="list-disc list-inside space-y-1">
@@ -67,12 +67,17 @@ export default function Home() {
 
     case 'loaded':
       return (
-        <div className="w-full px-3 text-slate-100">
+        <div className="w-full px-3 text-base-content">
           <article className="text-left">
+            <span
+              role="status"
+              className="sr-only"
+            >
+              {state.ttsState === 'speaking' ? 'Reading article' : state.ttsState === 'paused' ? 'Paused' : ''}
+            </span>
             <TOC htmlContent={doc.post.content} />
             <div
               id="article-content"
-              aria-live={state.ttsState !== 'idle' ? 'polite' : 'off'}
               className={`prose prose-invert mx-auto ${state.textSize} ${state.lineHeight}
                 prose-headings:font-semibold
                 prose-headings:tracking-tight

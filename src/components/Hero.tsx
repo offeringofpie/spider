@@ -32,7 +32,7 @@ export default function Hero() {
         <h1 className="font-semibold tracking-tight text-3xl md:text-4xl text-info mb-4">
           {post.title}
         </h1>
-        <div className="mb-6 flex flex-wrap items-center justify-between text-sm text-slate-300">
+        <div className="mb-6 flex flex-wrap items-center justify-between text-sm text-base-content/60">
           {post.word_count && <p>{readTime(post.word_count)} read time</p>}
           {post.date_published && (
             <time className="mt-2 md:mt-0" dateTime={post.date_published}>
@@ -66,19 +66,19 @@ export default function Hero() {
           style={{ maxHeight: '220px' }}
         />
 
-        <div className="flex-1 text-white min-w-0">
+        <div className="flex-1 text-base-content min-w-0">
           <h1 className="font-semibold tracking-tight text-2xl md:text-3xl drop-shadow-lg mb-4">
             {post.title}
           </h1>
           {(post.dek || post.excerpt) && (
-            <p className="text-slate-300 text-sm line-clamp-3">
+            <p className="text-base-content/70 text-sm line-clamp-3">
               {post.dek || post.excerpt}
             </p>
           )}
         </div>
       </div>
 
-      <div className="relative max-w-4xl mx-auto px-6 pb-10 flex justify-between text-sm text-slate-400">
+      <div className="relative max-w-4xl mx-auto px-6 pb-10 flex justify-between text-sm text-base-content/60">
         {post.word_count && <span>{readTime(post.word_count)} read time</span>}
         {post.date_published && (
           <time dateTime={post.date_published}>

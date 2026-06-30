@@ -88,7 +88,12 @@ export default function Header() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeTag = document.activeElement?.tagName;
-      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
+      if (
+        activeTag === 'INPUT' ||
+        activeTag === 'TEXTAREA' ||
+        activeTag === 'SELECT'
+      )
+        return;
 
       if (e.key === '/') {
         e.preventDefault();
@@ -113,7 +118,11 @@ export default function Header() {
       className={`navbar flex content-center justify-center w-full max-w-4xl mx-auto relative z-10 ${state.document.kind === 'loaded' && state.document.leadImageUrl ? 'bg-transparent' : 'bg-base-100'}`}
     >
       <div className="flex w-full max-w-6xl p-2">
-        <form onSubmit={handleSubmit} name="submit" className="flex-1 flex">
+        <form
+          onSubmit={handleSubmit}
+          name="submit"
+          className="flex-1 flex flex-col gap-1"
+        >
           <div className="relative flex w-full">
             <div className="flex absolute -left-0.5 items-center pointer-events-none">
               <svg
@@ -124,19 +133,22 @@ export default function Header() {
                 <use href="#web" />
               </svg>
             </div>
+            <label htmlFor="url" className="sr-only">
+              Article URL
+            </label>
             <input
               type="text"
               id="url"
               className="input input-accent bg-base-300 border-2 border-r-0 border-primary placeholder-primary-focus text-primary-focus text-sm rounded-none rounded-bl-lg block w-full pl-10 p-3 ease-linear h-full"
-              placeholder="Insert URL"
+              placeholder="Paste a URL to read"
               defaultValue={value}
               required
             />
             <button
               type="submit"
               className="block bg-base-300 border-2 border-l-0 rounded-tr-xl border-primary top-0 right-0 text-primary-focus cursor-pointer hover:text-primary h-full px-2"
-              aria-label="Submit"
-              title="Submit"
+              aria-label="Read article"
+              title="Read article"
             >
               <svg
                 aria-hidden="true"
