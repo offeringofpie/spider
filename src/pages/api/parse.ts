@@ -8,6 +8,7 @@ import {
   parseMarkdown,
   paywall,
   stripAtLinks,
+  stripHeadingAttrs,
   titleFromHtml,
 } from '../../lib/helpers';
 
@@ -156,7 +157,7 @@ async function tryStrategy(
     }
 
     const parsed = await Parser.parse(url.href, {
-      html: stripAtLinks(preserveMediaEmbeds(text)),
+      html: stripHeadingAttrs(stripAtLinks(preserveMediaEmbeds(text))),
       contentType: 'html',
     });
     if (parsed.content) parsed.content = restoreMediaEmbeds(parsed.content);

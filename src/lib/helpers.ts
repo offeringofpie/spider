@@ -95,6 +95,15 @@ export function stripAtLinks(html: string): string {
     .replace(/src=["']at:\/\/[^"']*["']/gi, '');
 }
 
+export function stripHeadingAttrs(html: string): string {
+  return html.replace(/<h([1-6])\b([^>]*)>/gi, (_match, level, attrs) => {
+    const cleaned = attrs
+      .replace(/\s+class=["'][^"']*["']/gi, '')
+      .replace(/\s+id=["'][^"']*["']/gi, '');
+    return `<h${level}${cleaned}>`;
+  });
+}
+
 export function ampUrl(html: string, base: URL): string | null {
   const match =
     html.match(/<link[^>]+rel=["']amphtml["'][^>]+href=["']([^"']+)["']/i) ??
