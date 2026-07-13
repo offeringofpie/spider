@@ -89,6 +89,13 @@ export function paywall(
   );
 }
 
+export function stripNoise(html: string): string {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '');
+}
+
 export function stripAtLinks(html: string): string {
   return html
     .replace(/href=["']at:\/\/[^"']*["']/gi, 'href="#"')

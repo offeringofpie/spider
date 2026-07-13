@@ -9,6 +9,7 @@ import {
   paywall,
   stripAtLinks,
   stripHeadingAttrs,
+  stripNoise,
   titleFromHtml,
 } from '../../lib/helpers';
 
@@ -24,6 +25,15 @@ const corsHeaders = {
 const cacheHeaders = {
   ...corsHeaders,
   'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+  'Netlify-CDN-Cache-Control':
+    'public, durable, s-maxage=86400, stale-while-revalidate=604800',
+};
+
+const partialCacheHeaders = {
+  ...corsHeaders,
+  'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+  'Netlify-CDN-Cache-Control':
+    'public, durable, s-maxage=3600, stale-while-revalidate=86400',
 };
 
 interface Strategy {
@@ -63,7 +73,9 @@ const strategies: Strategy[] = [
   {
     name: 'googlebot',
     matches: (url) => {
-      return ['.be', '.nl', '.fr', '.de', '.pt'].some((tld) => url.hostname.endsWith(tld));
+      return ['.be', '.nl', '.fr', '.de', '.pt'].some((tld) =>
+        url.hostname.endsWith(tld),
+      );
     },
     headers: {
       'User-Agent':
@@ -157,8 +169,11 @@ async function tryStrategy(
     }
 
     const parsed = await Parser.parse(url.href, {
-      html: stripHeadingAttrs(stripAtLinks(preserveMediaEmbeds(text))),
+      html: stripHeadingAttrs(
+        stripAtLinks(preserveMediaEmbeds(stripNoise(text))),
+      ),
       contentType: 'html',
+      fetchAllPages: false,
     });
     if (parsed.content) parsed.content = restoreMediaEmbeds(parsed.content);
     const content = parsed.content?.trim();
@@ -191,8 +206,9 @@ async function tryStrategy(
         if (ampResponse.ok) {
           const ampText = await ampResponse.text();
           const ampParsed = await Parser.parse(ampHref, {
-            html: ampText,
+            html: stripNoise(ampText),
             contentType: 'html',
+            fetchAllPages: false,
           });
           if (ampParsed.content?.trim() && !paywall(ampText, ampParsed)) {
             return {
@@ -272,7 +288,10 @@ export async function GET({ request }: { request: Request }) {
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     return new Response(
-      JSON.stringify({ error: 'Only http and https URLs are supported', provided: urlString }),
+      JSON.stringify({
+        error: 'Only http and https URLs are supported',
+        provided: urlString,
+      }),
       { status: 400, headers: corsHeaders },
     );
   }
@@ -328,7 +347,7 @@ export async function GET({ request }: { request: Request }) {
           paywalled: true,
         },
       }),
-      { status: 200, headers: cacheHeaders },
+      { status: 200, headers: partialCacheHeaders },
     );
   }
 
