@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
 import TOC from '../components/TOC';
+import ArchiveNotice from '../components/ArchiveNotice';
 
 export default function Home() {
   const [state] = useStore(defaultStore);
@@ -37,28 +38,7 @@ export default function Home() {
             <h1 className="font-semibold tracking-tight text-2xl text-error mb-4">
               Could not render this article
             </h1>
-            <p className="mb-4 text-sm text-base-content/80">{doc.message}</p>
-            {doc.archiveLinks.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm text-base-content/80">
-                  You can try opening from these archives:
-                </p>
-                <ul className="list-disc list-inside space-y-1">
-                  {doc.archiveLinks.map((l) => (
-                    <li key={l.url}>
-                      <a
-                        href={l.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-info underline underline-offset-2"
-                      >
-                        {l.label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <ArchiveNotice message={doc.message} url={doc.url} />
           </article>
         </div>
       );
@@ -85,6 +65,12 @@ export default function Home() {
                 prose-a:text-info prose-a:underline prose-a:underline-offset-2`}
               dangerouslySetInnerHTML={{ __html: doc.post.content }}
             />
+            {doc.paywalled && (
+              <ArchiveNotice
+                message="This article is behind a paywall."
+                url={doc.post.url}
+              />
+            )}
           </article>
         </div>
       );

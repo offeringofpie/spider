@@ -1,17 +1,20 @@
 import Parser from '@jocmp/mercury-parser';
 import { preserveMediaEmbeds, restoreMediaEmbeds } from '../../lib/embed';
 import {
-  ampUrl,
-  botChallenge,
-  extractDataRaw,
-  isMarkdown,
-  parseMarkdown,
-  paywall,
+  normalizeImages,
   stripAtLinks,
   stripHeadingAttrs,
   stripNoise,
+} from '../../lib/clean';
+import {
+  ampUrl,
+  extractDataRaw,
+  metaDescription,
+  paywallTeaser,
   titleFromHtml,
-} from '../../lib/helpers';
+} from '../../lib/extract';
+import { botChallenge, paywall } from '../../lib/detect';
+import { isMarkdown, parseMarkdown } from '../../lib/markdown';
 
 export const prerender = false;
 
@@ -170,7 +173,7 @@ async function tryStrategy(
 
     const parsed = await Parser.parse(url.href, {
       html: stripHeadingAttrs(
-        stripAtLinks(preserveMediaEmbeds(stripNoise(text))),
+        stripAtLinks(preserveMediaEmbeds(normalizeImages(stripNoise(text)))),
       ),
       contentType: 'html',
       fetchAllPages: false,
@@ -223,6 +226,9 @@ async function tryStrategy(
         }
       }
       if (content) {
+        if (!parsed.dek) parsed.dek = metaDescription(text);
+        const teaser = paywallTeaser(text);
+        if (teaser) parsed.content = teaser;
         return {
           kind: 'partial',
           parsed,

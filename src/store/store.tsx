@@ -93,15 +93,23 @@ interface ParsedPost {
   excerpt: string | null;
 }
 
-interface ArchiveLink {
-  url: string;
-  label: string;
+interface IdleDoc {
+  kind: 'idle';
 }
-
-interface IdleDoc    { kind: 'idle' }
-interface LoadingDoc { kind: 'loading' }
-interface LoadedDoc  { kind: 'loaded'; post: ParsedPost; leadImageUrl: string | null }
-interface ErrorDoc   { kind: 'error'; message: string; archiveLinks: ArchiveLink[] }
+interface LoadingDoc {
+  kind: 'loading';
+}
+interface LoadedDoc {
+  kind: 'loaded';
+  post: ParsedPost;
+  leadImageUrl: string | null;
+  paywalled: boolean;
+}
+interface ErrorDoc {
+  kind: 'error';
+  message: string;
+  url: string;
+}
 
 type DocumentState = IdleDoc | LoadingDoc | LoadedDoc | ErrorDoc;
 

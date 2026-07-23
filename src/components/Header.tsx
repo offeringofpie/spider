@@ -61,6 +61,7 @@ export default function Header() {
             kind: 'loaded',
             post: data,
             leadImageUrl: data.lead_image_url ?? null,
+            paywalled: data.meta?.paywalled ?? false,
           },
         });
       } else {
@@ -68,7 +69,7 @@ export default function Header() {
           document: {
             kind: 'error',
             message: data.error ?? 'The source site returned an error.',
-            archiveLinks: data.archive_links ?? [],
+            url,
           },
         });
       }
@@ -79,7 +80,7 @@ export default function Header() {
         document: {
           kind: 'error',
           message: 'Failed to reach parser.',
-          archiveLinks: [],
+          url,
         },
       });
     }
