@@ -20,15 +20,13 @@ export default function Home() {
 
     case 'loading':
       return (
-        <div role="status" aria-label="Loading article..." className="w-full mx-auto max-w-4xl text-base-content">
-          <article className="text-left">
-            <div className="mt-4 flex w-full max-w-2xl flex-col gap-4 mx-auto py-6">
-              <div className="skeleton bg-neutral-content h-32 w-full"></div>
-              <div className="skeleton bg-neutral-content h-4 w-28"></div>
-              <div className="skeleton bg-neutral-content h-4 w-full"></div>
-              <div className="skeleton bg-neutral-content h-4 w-full"></div>
-            </div>
-          </article>
+        <div
+          role="status"
+          aria-label="Loading article..."
+          className="w-full mx-auto max-w-4xl flex flex-col justify-center items-center gap-6 py-24 text-base-content"
+        >
+          <span className="loading loading-spinner loading-xl text-primary"></span>
+          <span>Loading...</span>
         </div>
       );
 
@@ -69,11 +67,12 @@ export default function Home() {
       return (
         <div className="w-full px-3 text-base-content">
           <article className="text-left">
-            <span
-              role="status"
-              className="sr-only"
-            >
-              {state.ttsState === 'speaking' ? 'Reading article' : state.ttsState === 'paused' ? 'Paused' : ''}
+            <span role="status" className="sr-only">
+              {state.ttsState === 'speaking'
+                ? 'Reading article'
+                : state.ttsState === 'paused'
+                  ? 'Paused'
+                  : ''}
             </span>
             <TOC htmlContent={doc.post.content} />
             <div
@@ -92,7 +91,9 @@ export default function Home() {
 
     default: {
       const _exhaustive = doc;
-      throw new Error(`Unhandled document state: ${JSON.stringify(_exhaustive)}`);
+      throw new Error(
+        `Unhandled document state: ${JSON.stringify(_exhaustive)}`,
+      );
     }
   }
 }
