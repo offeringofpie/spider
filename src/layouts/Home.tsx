@@ -3,6 +3,13 @@ import { defaultStore, useStore } from '../store/store';
 import TOC from '../components/TOC';
 import ArchiveNotice from '../components/ArchiveNotice';
 
+const textSizeClasses: Record<string, string> = {
+  'prose-base': 'prose-sm sm:prose-base',
+  'prose-lg': 'prose-sm sm:prose-lg',
+  'prose-xl': 'prose-base sm:prose-xl',
+  'prose-2xl': 'prose-lg sm:prose-2xl',
+};
+
 export default function Home() {
   const [state] = useStore(defaultStore);
   const doc = state.document;
@@ -57,7 +64,7 @@ export default function Home() {
             <TOC htmlContent={doc.post.content} />
             <div
               id="article-content"
-              className={`prose prose-invert mx-auto ${state.textSize} ${state.lineHeight}
+              className={`prose prose-invert mx-auto ${textSizeClasses[state.textSize] ?? state.textSize} ${state.lineHeight}
                 prose-headings:font-semibold
                 prose-headings:tracking-tight
                 prose-headings:block
