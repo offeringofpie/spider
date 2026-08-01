@@ -8,7 +8,7 @@ const namedEntities: Record<string, string> = {
   hellip: '…',
 };
 
-function decodeEntities(text: string): string {
+export function decodeEntities(text: string): string {
   return text
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
     .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(Number(dec)))

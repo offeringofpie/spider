@@ -14,7 +14,17 @@ import {
   titleFromHtml,
 } from '../../lib/extract';
 import { botChallenge, paywall } from '../../lib/detect';
-import { isMarkdown, parseMarkdown } from '../../lib/markdown';
+import { articleResult, isMarkdown, parseMarkdown } from '../../lib/markdown';
+import {
+  absolutize,
+  articleFromFeed,
+  articleFromLlms,
+  cleanMarkdownSource,
+  feedUrls,
+  leadImage,
+  llmsUrls,
+  markdownUrls,
+} from '../../lib/alternates';
 
 export const prerender = false;
 
@@ -37,6 +47,28 @@ const partialCacheHeaders = {
   'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
   'Netlify-CDN-Cache-Control':
     'public, durable, s-maxage=3600, stale-while-revalidate=86400',
+};
+
+const budget = 9000;
+const archivePending = 'Archive requested, snapshot not ready yet';
+
+const browserHeaders = {
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+  Accept:
+    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+  'Accept-Language': 'en-GB,en;q=0.9',
+  'Accept-Encoding': 'gzip, deflate, br',
+  'Sec-Ch-Ua':
+    '"Chromium";v="123", "Not:A-Brand";v="8", "Google Chrome";v="123"',
+  'Sec-Ch-Ua-Mobile': '?0',
+  'Sec-Ch-Ua-Platform': '"Windows"',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'cross-site',
+  'Sec-Fetch-User': '?1',
+  'Upgrade-Insecure-Requests': '1',
+  Referer: 'https://www.google.com/',
 };
 
 interface Strategy {
@@ -90,11 +122,7 @@ const strategies: Strategy[] = [
   {
     name: 'regular',
     matches: () => true,
-    headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-      Referer: 'https://www.google.com/',
-    },
+    headers: browserHeaders,
   },
   {
     name: 'wayback',
@@ -124,6 +152,8 @@ const strategies: Strategy[] = [
   },
 ];
 
+const fallback = strategies.find((s) => s.name === 'regular')!;
+
 async function fetchWithRetry(
   fetchUrl: string,
   options: RequestInit,
@@ -139,6 +169,18 @@ async function fetchWithRetry(
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
   throw new Error('HTTP 429: Too Many Requests');
+}
+
+async function parse(sourceUrl: string, html: string) {
+  const parsed = await Parser.parse(sourceUrl, {
+    html: stripHeadingAttrs(
+      stripAtLinks(preserveMediaEmbeds(normalizeImages(stripNoise(html)))),
+    ),
+    contentType: 'html',
+    fetchAllPages: false,
+  });
+  if (parsed.content) parsed.content = restoreMediaEmbeds(parsed.content);
+  return parsed;
 }
 
 async function tryStrategy(
@@ -171,14 +213,7 @@ async function tryStrategy(
       };
     }
 
-    const parsed = await Parser.parse(url.href, {
-      html: stripHeadingAttrs(
-        stripAtLinks(preserveMediaEmbeds(normalizeImages(stripNoise(text)))),
-      ),
-      contentType: 'html',
-      fetchAllPages: false,
-    });
-    if (parsed.content) parsed.content = restoreMediaEmbeds(parsed.content);
+    const parsed = await parse(url.href, text);
     const content = parsed.content?.trim();
 
     if (botChallenge(text, parsed.title ?? null)) {
@@ -267,6 +302,188 @@ async function tryStrategy(
   }
 }
 
+interface Fetched {
+  url: string;
+  text: string;
+  contentType: string;
+}
+
+async function fetchGroup(
+  urls: string[],
+  headers: Record<string, string>,
+  timeout: number,
+): Promise<Fetched[]> {
+  const results = await Promise.all(
+    urls.map(async (fetchUrl) => {
+      try {
+        const response = await fetch(fetchUrl, {
+          headers,
+          signal: AbortSignal.timeout(timeout),
+          redirect: 'follow',
+        });
+        if (!response.ok) return null;
+        return {
+          url: fetchUrl,
+          text: await response.text(),
+          contentType: response.headers.get('content-type') ?? '',
+        };
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return results.filter((result) => result !== null);
+}
+
+function alternateTimeout(remaining: number): number {
+  return Math.min(Math.max(remaining - 500, 0), 2500);
+}
+
+function alternateSuccess(
+  parsed: StrategySuccess['parsed'],
+  fetchedUrl: string,
+  contentLength: number,
+): StrategySuccess {
+  return {
+    kind: 'success',
+    parsed,
+    fetchedUrl,
+    strategyName: 'alternates',
+    contentLength,
+    paywalled: false,
+  };
+}
+
+function parseAlternate(text: string, sourceUrl: string) {
+  const parsed = parseMarkdown(cleanMarkdownSource(text), sourceUrl);
+  if (parsed.content) {
+    parsed.content = absolutize(parsed.content, sourceUrl);
+    parsed.lead_image_url = leadImage(parsed.content);
+  }
+  return parsed;
+}
+
+async function tryMarkdownAlternate(url: URL, timeout: number) {
+  const headers = { ...browserHeaders, Accept: 'text/markdown, text/plain' };
+  const candidates = [url.href, ...markdownUrls(url)];
+  const results = await fetchGroup(candidates, headers, timeout);
+
+  for (const fetched of results) {
+    const looksMarkdown =
+      fetched.contentType.includes('text/markdown') ||
+      fetched.url.endsWith('.md');
+    if (!looksMarkdown || fetched.text.trimStart().startsWith('<')) continue;
+    const parsed = parseAlternate(fetched.text, url.href);
+    if (!parsed.content?.trim()) continue;
+    return alternateSuccess(parsed, fetched.url, fetched.text.length);
+  }
+  return null;
+}
+
+async function tryFeedAlternate(url: URL, timeout: number) {
+  const results = await fetchGroup(feedUrls(url), browserHeaders, timeout);
+
+  for (const fetched of results) {
+    const article = articleFromFeed(fetched.text, url.href);
+    if (!article) continue;
+    const content = absolutize(article.content, url.href);
+    const parsed = articleResult(content, url.href, {
+      title: article.title,
+      datePublished: article.datePublished,
+      leadImageUrl: leadImage(content),
+    });
+    return alternateSuccess(parsed, fetched.url, fetched.text.length);
+  }
+  return null;
+}
+
+async function tryLlmsAlternate(url: URL, timeout: number) {
+  const results = await fetchGroup(llmsUrls(url), browserHeaders, timeout);
+
+  for (const fetched of results) {
+    const article = articleFromLlms(fetched.text, url.href);
+    if (!article) continue;
+    const parsed = parseAlternate(article.body, url.href);
+    if (!parsed.content?.trim()) continue;
+    parsed.title = article.title;
+    return alternateSuccess(parsed, fetched.url, fetched.text.length);
+  }
+  return null;
+}
+
+async function tryAlternates(
+  url: URL,
+  remaining: () => number,
+): Promise<StrategyAttempt> {
+  const finders = [tryMarkdownAlternate, tryFeedAlternate, tryLlmsAlternate];
+
+  for (const find of finders) {
+    const timeout = alternateTimeout(remaining());
+    if (timeout < 800) break;
+    const found = await find(url, timeout);
+    if (found) return found;
+  }
+
+  return {
+    kind: 'failure',
+    strategyName: 'alternates',
+    error: 'No alternate representation found',
+  };
+}
+
+async function trySavePage(
+  url: URL,
+  remaining: () => number,
+): Promise<StrategyAttempt> {
+  const timeout = Math.min(remaining() - 500, 8000);
+  if (timeout < 1000) {
+    return {
+      kind: 'failure',
+      strategyName: 'savepage',
+      error: 'No time left to request an archive',
+    };
+  }
+
+  try {
+    const response = await fetch(`https://web.archive.org/save/${url.href}`, {
+      headers: { 'User-Agent': browserHeaders['User-Agent'] },
+      signal: AbortSignal.timeout(timeout),
+      redirect: 'follow',
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const text = await response.text();
+    const parsed = await parse(url.href, text);
+    if (!parsed.content?.trim()) throw new Error(archivePending);
+    return {
+      kind: 'success',
+      parsed,
+      fetchedUrl: response.url,
+      strategyName: 'savepage',
+      contentLength: text.length,
+      paywalled: false,
+    };
+  } catch (error) {
+    const { name, message } = error as Error;
+    const pending = name === 'TimeoutError' || message === archivePending;
+    return {
+      kind: 'failure',
+      strategyName: 'savepage',
+      error: pending ? archivePending : `Archive request failed: ${message}`,
+    };
+  }
+}
+
+function runStep(
+  name: string,
+  url: URL,
+  remaining: () => number,
+): Promise<StrategyAttempt> {
+  if (name === 'alternates') return tryAlternates(url, remaining);
+  if (name === 'savepage') return trySavePage(url, remaining);
+  const strategy = strategies.find((s) => s.name === name) ?? fallback;
+  return tryStrategy(url, strategy);
+}
+
 export async function GET({ request }: { request: Request }) {
   const { searchParams } = new URL(request.url);
   const urlString = searchParams.get('q');
@@ -302,20 +519,34 @@ export async function GET({ request }: { request: Request }) {
     );
   }
 
-  const fallback = strategies.find((s) => s.name === 'regular')!;
-  let selected: Strategy[];
+  const started = Date.now();
+  const remaining = () => budget - (Date.now() - started);
+
+  let steps: string[];
   if (strategyParam === 'auto') {
-    const primary = strategies.find((s) => s.matches(url)) ?? fallback;
-    selected = [primary, ...strategies.filter((s) => s !== primary)];
+    const direct = strategies.filter((s) => s.name !== 'wayback');
+    const primary = direct.find((s) => s.matches(url)) ?? fallback;
+    const ordered = [primary, ...direct.filter((s) => s !== primary)];
+    steps = [
+      ...ordered.map((s) => s.name),
+      'alternates',
+      'wayback',
+      'savepage',
+    ];
   } else {
-    selected = [strategies.find((s) => s.name === strategyParam) ?? fallback];
+    steps = [strategyParam];
   }
 
   let bestPartial: StrategyPartial | null = null;
-  let lastFailure: StrategyFailure | null = null;
+  let firstFailure: StrategyFailure | null = null;
   let botChallengeDetected = false;
-  for (const strategy of selected) {
-    const result = await tryStrategy(url, strategy);
+  let archiveRequested = false;
+  let notFound = false;
+
+  for (const step of steps) {
+    if (step === 'savepage' && notFound) break;
+    if (remaining() < 500) break;
+    const result = await runStep(step, url, remaining);
     if (result.kind === 'success') {
       return new Response(
         JSON.stringify({
@@ -336,8 +567,10 @@ export async function GET({ request }: { request: Request }) {
     } else {
       if (result.error === 'Bot challenge detected')
         botChallengeDetected = true;
+      if (result.error === archivePending) archiveRequested = true;
+      if (/^HTTP (404|410)$/.test(result.error)) notFound = true;
       console.warn(`Strategy '${result.strategyName}' failed:`, result.error);
-      lastFailure = result;
+      if (!firstFailure) firstFailure = result;
     }
   }
 
@@ -357,17 +590,29 @@ export async function GET({ request }: { request: Request }) {
     );
   }
 
+  let suggestion =
+    'Try accessing the article via one of the archive links below.';
+  if (archiveRequested) {
+    suggestion =
+      'An archive of this page has been requested. Try again in a minute.';
+  } else if (botChallengeDetected) {
+    suggestion =
+      'This page blocked automated access. Try an archived version below.';
+  }
+
   return new Response(
     JSON.stringify({
-      error: lastFailure?.error ?? 'All strategies failed.',
+      error: firstFailure?.error ?? 'All strategies failed.',
       url: url.href,
-      suggestion: botChallengeDetected
-        ? 'This page blocked automated access. Try an archived version below.'
-        : 'Try accessing the article via one of the archive links below.',
+      suggestion,
       archive_links: [
         {
           label: 'Wayback Machine snapshots',
           url: `https://web.archive.org/web/*/${url.href}`,
+        },
+        {
+          label: 'Archive this page now',
+          url: `https://web.archive.org/save/${url.href}`,
         },
       ],
     }),
