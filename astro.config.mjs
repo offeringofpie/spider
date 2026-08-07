@@ -8,6 +8,7 @@ import indexnow from 'astro-indexnow';
 // https://astro.build/config
 export default defineConfig({
   site: 'https://spider.jlopes.eu',
+  session: false,
   integrations: [
     react(),
     indexnow({

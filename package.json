@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview",
+    "preview": "netlify dev",
     "astro": "astro",
     "functions:build": "netlify functions:build",
     "functions:create": "netlify functions:create",
@@ -15,15 +15,15 @@
     "functions:serve": "netlify functions:serve"
   },
   "dependencies": {
-    "@astrojs/check": "^0.9.9",
-    "@astrojs/netlify": "^8.0.0",
-    "@astrojs/react": "^6.0.0",
+    "@astrojs/check": "^0.9.10",
+    "@astrojs/netlify": "^8.2.0",
+    "@astrojs/react": "^6.0.2",
     "@jocmp/mercury-parser": "^3.0.3",
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.2.1",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "astro": "^7.0.0",
+    "astro": "^7.2.0",
     "marked": "^18.0.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
