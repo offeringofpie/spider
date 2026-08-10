@@ -15,7 +15,7 @@ const q = Astro.url.searchParams.get('q');
 const userAgent = Astro.request.headers.get('user-agent') || '';
 
 const isBot =
-  /bot|facebook|twitter|slack|discord|whatsapp|telegram|linkedin|skype/i.test(
+  /bot|crawler|bluesky|cardyb|mastodon|pleroma|misskey|akkoma|friendica|lemmy|facebook|twitter|slack|discord|whatsapp|telegram|linkedin|skype|iframely|embedly/i.test(
     userAgent,
   );
 
@@ -24,6 +24,8 @@ let description = 'Parse news articles and web pages with ease.';
 let url = Astro.url.href;
 let image = 'https://spider.jlopes.eu/spiderweb.jpg';
 let type = 'website';
+let author = '';
+let publishedTime = '';
 
 if (q && isBot) {
   type = 'article';
@@ -34,15 +36,16 @@ if (q && isBot) {
     if (res.ok) {
       const article = await res.json();
 
-      title = article.title || article.meta_title || `Parsed: ${q}`;
+      title = article.title || `Parsed: ${q}`;
 
-      const articleDescription =
-        article.dek || article.excerpt || article.description || '';
+      const articleDescription = article.dek || article.excerpt || '';
       description = articleDescription
         ? articleDescription.slice(0, 200)
         : `Clean reader view of ${q}`;
 
-      image = article.lead_image_url || article.image || image;
+      image = article.lead_image_url || image;
+      author = article.author || '';
+      publishedTime = article.date_published || '';
     }
   } catch (err) {
     console.error('Failed to fetch OG data:', err);
@@ -52,7 +55,7 @@ if (q && isBot) {
 }
 ---
 
-<Layout {title} {description} {url} {image} {type}>
+<Layout {title} {description} {url} {image} {type} {author} {publishedTime}>
   <Progress client:load />
   <Header client:only />
   <Translate client:only />
