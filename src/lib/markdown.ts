@@ -40,7 +40,7 @@ export function articleResult(
     word_count: extras.wordCount ?? words.length,
     date_published: extras.datePublished ?? null,
     lead_image_url: extras.leadImageUrl ?? null,
-    dek: null,
+    dek: null as string | null,
     excerpt,
   };
 }

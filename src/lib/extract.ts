@@ -15,6 +15,14 @@ export function decodeEntities(text: string): string {
     .replace(/&(\w+);/g, (match, name) => namedEntities[name] ?? match);
 }
 
+export function countWords(html: string | null | undefined): number {
+  if (!html) return 0;
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean).length;
+}
+
 export function metaDescription(html: string): string | null {
   const tag =
     html.match(/<meta[^>]+og:description[^>]*>/i) ??

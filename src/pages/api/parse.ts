@@ -8,12 +8,15 @@ import {
 } from '../../lib/clean';
 import {
   ampUrl,
+  countWords,
   extractDataRaw,
   metaDescription,
   paywallTeaser,
   titleFromHtml,
 } from '../../lib/extract';
 import { botChallenge, paywall } from '../../lib/detect';
+import { structuredArticle } from '../../lib/structured';
+import { parseWithDefuddle } from '../../lib/defuddle';
 import { articleResult, isMarkdown, parseMarkdown } from '../../lib/markdown';
 import {
   absolutize,
@@ -50,17 +53,21 @@ const partialCacheHeaders = {
 };
 
 const budget = 9000;
+const defaultTimeout = 3500;
+const confidentWords = 200;
+const recoverWords = 150;
+const truncationRatio = 1.5;
 const archivePending = 'Archive requested, snapshot not ready yet';
 
 const browserHeaders = {
   'User-Agent':
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
   Accept:
     'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
   'Accept-Language': 'en-GB,en;q=0.9',
   'Accept-Encoding': 'gzip, deflate, br',
   'Sec-Ch-Ua':
-    '"Chromium";v="123", "Not:A-Brand";v="8", "Google Chrome";v="123"',
+    '"Chromium";v="139", "Not:A-Brand";v="24", "Google Chrome";v="139"',
   'Sec-Ch-Ua-Mobile': '?0',
   'Sec-Ch-Ua-Platform': '"Windows"',
   'Sec-Fetch-Dest': 'document',
@@ -86,6 +93,7 @@ interface StrategySuccess {
   strategyName: string;
   contentLength: number;
   paywalled: boolean;
+  confident: boolean;
 }
 
 interface StrategyPartial {
@@ -125,6 +133,16 @@ const strategies: Strategy[] = [
     headers: browserHeaders,
   },
   {
+    name: 'bingbot',
+    matches: () => false,
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+  },
+  {
     name: 'wayback',
     matches: () => false,
     rewrite: async (url) => {
@@ -146,7 +164,7 @@ const strategies: Strategy[] = [
     timeout: 6000,
     headers: {
       'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     },
   },
@@ -157,14 +175,20 @@ const fallback = strategies.find((s) => s.name === 'regular')!;
 async function fetchWithRetry(
   fetchUrl: string,
   options: RequestInit,
+  remaining?: () => number,
   retries = 2,
   backoff = 500,
 ): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     const response = await fetch(fetchUrl, options);
     if (response.status !== 429) return response;
-    const retryAfter = response.headers.get('Retry-After');
-    const delay = retryAfter ? parseInt(retryAfter) * 1000 : backoff;
+    if (i === retries - 1) break;
+    const retryAfter = Number(response.headers.get('Retry-After'));
+    const wanted =
+      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : backoff;
+    const budgetLeft = remaining ? remaining() - 500 : wanted;
+    const delay = Math.min(wanted, Math.max(budgetLeft, 0), 3000);
+    if (delay <= 0) break;
     console.warn(`429 received, retrying in ${delay}ms...`);
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
@@ -183,18 +207,71 @@ async function parse(sourceUrl: string, html: string) {
   return parsed;
 }
 
-async function tryStrategy(
+function success(
+  parsed: StrategySuccess['parsed'],
+  fetchedUrl: string,
+  strategyName: string,
+  contentLength: number,
+  confident: boolean,
+): StrategySuccess {
+  return {
+    kind: 'success',
+    parsed,
+    fetchedUrl,
+    strategyName,
+    contentLength,
+    paywalled: false,
+    confident,
+  };
+}
+
+async function tryAmp(
   url: URL,
+  html: string,
   strategy: Strategy,
-): Promise<StrategyAttempt> {
-  try {
-    const fetchUrl = (await strategy.rewrite?.(url)) ?? url.href;
-    const timeout = strategy.timeout ?? 4500;
-    const response = await fetchWithRetry(fetchUrl, {
+  remaining: () => number,
+) {
+  const ampHref = ampUrl(html, url);
+  if (!ampHref) return null;
+  const budgetLeft = remaining() - 500;
+  if (budgetLeft < 1000) return null;
+  const timeout = Math.min(strategy.timeout ?? defaultTimeout, budgetLeft);
+  const response = await fetchWithRetry(
+    ampHref,
+    {
       headers: strategy.headers,
       signal: AbortSignal.timeout(timeout),
       redirect: 'follow',
-    });
+    },
+    remaining,
+  );
+  if (!response.ok) return null;
+  const ampText = await response.text();
+  const ampParsed = await parse(ampHref, ampText);
+  if (!ampParsed.content?.trim()) return null;
+  if (paywall(ampText, countWords(ampParsed.content))) return null;
+  return { parsed: ampParsed, fetchedUrl: ampHref, contentLength: ampText.length };
+}
+
+async function tryStrategy(
+  url: URL,
+  strategy: Strategy,
+  remaining: () => number,
+): Promise<StrategyAttempt> {
+  try {
+    const budgetLeft = remaining() - 500;
+    if (budgetLeft < 1000) throw new Error('No time left for this strategy');
+    const fetchUrl = (await strategy.rewrite?.(url)) ?? url.href;
+    const timeout = Math.min(strategy.timeout ?? defaultTimeout, budgetLeft);
+    const response = await fetchWithRetry(
+      fetchUrl,
+      {
+        headers: strategy.headers,
+        signal: AbortSignal.timeout(timeout),
+        redirect: 'follow',
+      },
+      remaining,
+    );
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const text = await response.text();
     const contentType = response.headers.get('content-type') ?? '';
@@ -203,64 +280,84 @@ async function tryStrategy(
       const parsed = parseMarkdown(text, url.href);
       if (!parsed.content?.trim())
         throw new Error('Empty content after parsing');
-      return {
-        kind: 'success',
-        parsed,
-        fetchedUrl: fetchUrl,
-        strategyName: strategy.name,
-        contentLength: text.length,
-        paywalled: false,
-      };
+      return success(parsed, fetchUrl, strategy.name, text.length, true);
     }
 
     const parsed = await parse(url.href, text);
-    const content = parsed.content?.trim();
 
     if (botChallenge(text, parsed.title ?? null)) {
       throw new Error('Bot challenge detected');
     }
 
-    const paywallDetected = paywall(text, parsed);
+    const mercuryContent = parsed.content?.trim();
+    const mercuryWords = countWords(parsed.content);
+    const paywallDetected = paywall(text, mercuryWords);
 
-    if (content && !paywallDetected) {
-      return {
-        kind: 'success',
-        parsed,
-        fetchedUrl: fetchUrl,
-        strategyName: strategy.name,
-        contentLength: text.length,
-        paywalled: false,
-      };
+    const structured = structuredArticle(text, url.href);
+    const structuredWords = countWords(structured?.content);
+    if (
+      structured &&
+      structuredWords >= recoverWords &&
+      structuredWords >= mercuryWords * truncationRatio &&
+      (structuredWords >= confidentWords || !paywallDetected)
+    ) {
+      if (!structured.title) structured.title = parsed.title ?? titleFromHtml(text);
+      if (!structured.dek) structured.dek = metaDescription(text);
+      return success(structured, fetchUrl, strategy.name, text.length, true);
+    }
+
+    if (mercuryContent && !paywallDetected) {
+      const confident = mercuryWords >= confidentWords;
+      return success(parsed, fetchUrl, strategy.name, text.length, confident);
     }
 
     if (paywallDetected) {
-      const ampHref = ampUrl(text, url);
-      if (ampHref) {
-        const ampResponse = await fetchWithRetry(ampHref, {
-          headers: strategy.headers,
-          signal: AbortSignal.timeout(timeout),
-          redirect: 'follow',
-        });
-        if (ampResponse.ok) {
-          const ampText = await ampResponse.text();
-          const ampParsed = await Parser.parse(ampHref, {
-            html: stripNoise(ampText),
-            contentType: 'html',
-            fetchAllPages: false,
-          });
-          if (ampParsed.content?.trim() && !paywall(ampText, ampParsed)) {
-            return {
-              kind: 'success',
-              parsed: ampParsed,
-              fetchedUrl: ampHref,
-              strategyName: strategy.name,
-              contentLength: ampText.length,
-              paywalled: false,
-            };
-          }
-        }
+      const amp = await tryAmp(url, text, strategy, remaining);
+      if (amp)
+        return success(
+          amp.parsed,
+          amp.fetchedUrl,
+          strategy.name,
+          amp.contentLength,
+          true,
+        );
+    }
+
+    if (!mercuryContent || mercuryWords < confidentWords) {
+      const defuddled = await parseWithDefuddle(text, url.href);
+      const defuddleWords = countWords(defuddled?.content);
+      if (
+        defuddled &&
+        defuddleWords >= recoverWords &&
+        defuddleWords > mercuryWords &&
+        (defuddleWords >= confidentWords || !paywallDetected)
+      ) {
+        return success(defuddled, fetchUrl, strategy.name, text.length, true);
       }
-      if (content) {
+    }
+
+    const rawMd = extractDataRaw(text);
+    if (rawMd) {
+      const mdParsed = parseMarkdown(rawMd, url.href);
+      if (mdParsed.content?.trim()) {
+        if (!mdParsed.title) mdParsed.title = titleFromHtml(text);
+        return success(mdParsed, fetchUrl, strategy.name, text.length, true);
+      }
+    }
+
+    if (paywallDetected) {
+      if (structured && structuredWords > mercuryWords) {
+        if (!structured.title) structured.title = parsed.title ?? titleFromHtml(text);
+        if (!structured.dek) structured.dek = metaDescription(text);
+        return {
+          kind: 'partial',
+          parsed: structured,
+          fetchedUrl: fetchUrl,
+          strategyName: strategy.name,
+          contentLength: text.length,
+        };
+      }
+      if (mercuryContent) {
         if (!parsed.dek) parsed.dek = metaDescription(text);
         const teaser = paywallTeaser(text);
         if (teaser) parsed.content = teaser;
@@ -270,22 +367,6 @@ async function tryStrategy(
           fetchedUrl: fetchUrl,
           strategyName: strategy.name,
           contentLength: text.length,
-        };
-      }
-    }
-
-    const rawMd = extractDataRaw(text);
-    if (rawMd) {
-      const mdParsed = parseMarkdown(rawMd, url.href);
-      if (mdParsed.content?.trim()) {
-        if (!mdParsed.title) mdParsed.title = titleFromHtml(text);
-        return {
-          kind: 'success',
-          parsed: mdParsed,
-          fetchedUrl: fetchUrl,
-          strategyName: strategy.name,
-          contentLength: text.length,
-          paywalled: false,
         };
       }
     }
@@ -351,6 +432,7 @@ function alternateSuccess(
     strategyName: 'alternates',
     contentLength,
     paywalled: false,
+    confident: true,
   };
 }
 
@@ -415,12 +497,14 @@ async function tryAlternates(
   url: URL,
   remaining: () => number,
 ): Promise<StrategyAttempt> {
-  const finders = [tryMarkdownAlternate, tryFeedAlternate, tryLlmsAlternate];
-
-  for (const find of finders) {
-    const timeout = alternateTimeout(remaining());
-    if (timeout < 800) break;
-    const found = await find(url, timeout);
+  const timeout = alternateTimeout(remaining());
+  if (timeout >= 800) {
+    const [markdown, feed, llms] = await Promise.all([
+      tryMarkdownAlternate(url, timeout),
+      tryFeedAlternate(url, timeout),
+      tryLlmsAlternate(url, timeout),
+    ]);
+    const found = markdown ?? feed ?? llms;
     if (found) return found;
   }
 
@@ -461,6 +545,7 @@ async function trySavePage(
       strategyName: 'savepage',
       contentLength: text.length,
       paywalled: false,
+      confident: true,
     };
   } catch (error) {
     const { name, message } = error as Error;
@@ -481,7 +566,7 @@ function runStep(
   if (name === 'alternates') return tryAlternates(url, remaining);
   if (name === 'savepage') return trySavePage(url, remaining);
   const strategy = strategies.find((s) => s.name === name) ?? fallback;
-  return tryStrategy(url, strategy);
+  return tryStrategy(url, strategy, remaining);
 }
 
 export async function GET({ request }: { request: Request }) {
@@ -523,16 +608,13 @@ export async function GET({ request }: { request: Request }) {
   const remaining = () => budget - (Date.now() - started);
 
   let steps: string[];
+  const directSteps = new Set<string>();
   if (strategyParam === 'auto') {
     const direct = strategies.filter((s) => s.name !== 'wayback');
     const primary = direct.find((s) => s.matches(url)) ?? fallback;
     const ordered = [primary, ...direct.filter((s) => s !== primary)];
-    steps = [
-      ...ordered.map((s) => s.name),
-      'alternates',
-      'wayback',
-      'savepage',
-    ];
+    for (const s of ordered) directSteps.add(s.name);
+    steps = [...ordered.map((s) => s.name), 'alternates', 'wayback'];
   } else {
     steps = [strategyParam];
   }
@@ -546,6 +628,7 @@ export async function GET({ request }: { request: Request }) {
   for (const step of steps) {
     if (step === 'savepage' && notFound) break;
     if (remaining() < 500) break;
+    if (bestPartial && directSteps.has(step)) continue;
     const result = await runStep(step, url, remaining);
     if (result.kind === 'success') {
       return new Response(
@@ -559,7 +642,10 @@ export async function GET({ request }: { request: Request }) {
             paywalled: result.paywalled,
           },
         }),
-        { status: 200, headers: cacheHeaders },
+        {
+          status: 200,
+          headers: result.confident ? cacheHeaders : partialCacheHeaders,
+        },
       );
     }
     if (result.kind === 'partial') {
