@@ -6,8 +6,11 @@ const TextSettings = () => {
   return (
     <div className="flex w-full gap-4">
       <div className="flex flex-col gap-2 flex-1 w-1/2 align-top">
-        <h3 className="text-center tracking-wider">Text Size</h3>
+        <label htmlFor="text-size" className="text-center tracking-wider">
+          Text Size
+        </label>
         <select
+          id="text-size"
           className="select select-primary focus:outline-0 w-full text-primary-focus hover:text-primary rounded-xl cursor-pointer"
           value={state.textSize || 'prose-xl'}
           onChange={(e) => setState({ textSize: e.target.value })}
@@ -19,8 +22,11 @@ const TextSettings = () => {
         </select>
       </div>
       <div className="flex flex-col gap-2 flex-1 w-1/2 align-top">
-        <h3 className="text-center tracking-wider">Line Spacing</h3>
+        <label htmlFor="line-spacing" className="text-center tracking-wider">
+          Line Spacing
+        </label>
         <select
+          id="line-spacing"
           className="select select-primary focus:outline-0 w-full text-primary-focus hover:text-primary rounded-xl cursor-pointer"
           value={state.lineHeight || 'leading-relaxed'}
           onChange={(e) => setState({ lineHeight: e.target.value })}

@@ -95,6 +95,8 @@ export default function TranslateBar() {
   return (
     <div
       inert={!state.showTranslateBar ? true : undefined}
+      role="region"
+      aria-label="Translate"
       className={`w-full bg-base-300 transition-all duration-300 ease-in-out notranslate ${
         state.showTranslateBar
           ? 'max-h-20 border-b border-primary/20'
@@ -102,12 +104,13 @@ export default function TranslateBar() {
       }`}
     >
       <div className="w-full mx-auto max-w-4xl px-6 p-4 flex items-center justify-between">
-        <h3 className="text-base-content hidden sm:block">Translate</h3>
+        <div className="text-base-content hidden sm:block">Translate</div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end relative">
           <div id="google_translate_element_hidden" className="sr-only"></div>
 
           <select
+            aria-label="Translate page to"
             className={`select select-bordered select-sm w-full max-w-xs bg-base-100 ${hasError ? 'select-error text-error' : 'select-primary'}`}
             onChange={(e) => setSelectedLang(e.target.value)}
             value={selectedLang}
@@ -132,6 +135,7 @@ export default function TranslateBar() {
           <button
             onClick={handleTranslateClick}
             disabled={!isReady || !selectedLang || hasError}
+            aria-label="Translate page"
             className="btn btn-ghost btn-sm"
           >
             <svg
@@ -146,6 +150,7 @@ export default function TranslateBar() {
 
           <button
             onClick={() => setState({ showTranslateBar: false })}
+            aria-label="Close translate bar"
             className="btn btn-ghost btn-lg btn-circle text-base-content ml-2"
           >
             ✕

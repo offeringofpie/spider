@@ -27,6 +27,16 @@ let type = 'website';
 let author = '';
 let publishedTime = '';
 
+const sourceUrl = (() => {
+  if (!q) return null;
+  try {
+    const parsed = new URL(q);
+    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : null;
+  } catch {
+    return null;
+  }
+})();
+
 if (q && isBot) {
   type = 'article';
   try {
@@ -55,14 +65,24 @@ if (q && isBot) {
 }
 ---
 
-<Layout {title} {description} {url} {image} {type} {author} {publishedTime}>
+<Layout
+  {title}
+  {description}
+  {url}
+  {image}
+  {type}
+  {author}
+  {publishedTime}
+  canonical={sourceUrl ?? Astro.url.href}
+  noindex={!!q}
+>
   <Progress client:load />
   <Header client:only />
   <Translate client:only />
   <Settings client:only />
   <Hero client:only />
 
-  <main class="mx-auto max-w-4xl px-4 py-10">
+  <main id="main" tabindex="-1" class="mx-auto max-w-4xl px-4 py-10">
     <Home client:only />
     <Fab client:only />
     <Sprite />

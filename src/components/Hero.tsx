@@ -11,6 +11,23 @@ const readTime = (wordCount: number) => {
   return `${roundedMinutes} minute${roundedMinutes !== 1 ? 's' : ''}`;
 };
 
+const stripSiteSuffix = (title: string, url: string) => {
+  const match = title.match(/^(.*?)\s+[-|–—]\s+([^-|–—]+)$/);
+  if (!match) return title;
+
+  const normalise = (s: string) => {
+    return s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  };
+
+  try {
+    const host = normalise(new URL(url).hostname.replace(/^www\./, ''));
+    const suffix = normalise(match[2]);
+    return suffix && host.includes(suffix) ? match[1] : title;
+  } catch {
+    return title;
+  }
+};
+
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
   const year = date.getUTCFullYear();
@@ -25,12 +42,13 @@ export default function Hero() {
   if (state.document.kind !== 'loaded') return null;
 
   const { post, leadImageUrl } = state.document;
+  const title = post.title ? stripSiteSuffix(post.title, post.url) : '';
 
   if (!leadImageUrl) {
     return (
       <div className="relative max-w-4xl mx-auto px-6 pt-10">
         <h1 className="font-semibold tracking-tight text-3xl md:text-4xl text-info mb-4">
-          {post.title}
+          {title}
         </h1>
         <div className="mb-6 flex flex-wrap items-center justify-between text-sm text-base-content/60">
           {post.word_count && <p>{readTime(post.word_count)} read time</p>}
@@ -61,14 +79,16 @@ export default function Hero() {
       <div className="relative max-w-4xl mx-auto px-6 pt-10 pb-4 flex flex-col md:flex-row gap-8 items-start">
         <img
           src={leadImageUrl}
-          alt={post.title ?? ''}
+          alt={title}
+          fetchPriority="high"
+          decoding="async"
           className="w-full md:w-1/2 rounded-xl shadow-2xl object-cover shrink-0"
-          style={{ maxHeight: '220px' }}
+          style={{ height: '220px' }}
         />
 
         <div className="flex-1 text-base-content min-w-0">
           <h1 className="font-semibold tracking-tight text-2xl md:text-3xl drop-shadow-lg mb-4">
-            {post.title}
+            {title}
           </h1>
           {(post.dek || post.excerpt) && (
             <p className="text-base-content/70 text-sm line-clamp-3">

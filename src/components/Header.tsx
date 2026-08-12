@@ -116,7 +116,7 @@ export default function Header() {
     <header>Hello world</header>
   ) : (
     <header
-      className={`navbar flex content-center justify-center w-full max-w-4xl mx-auto relative z-10 ${state.document.kind === 'loaded' && state.document.leadImageUrl ? 'bg-transparent' : 'bg-base-100'}`}
+      className={`navbar flex content-center justify-center w-full max-w-4xl mx-auto relative z-10 bg-transparent`}
     >
       <div className="flex w-full max-w-6xl p-2">
         <form

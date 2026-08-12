@@ -11,6 +11,8 @@ export default function Settings() {
   return (
     <div
       inert={!isVisible ? true : undefined}
+      role="region"
+      aria-label="Settings"
       className={`w-full bg-base-200 transition-all duration-300 ease-in-out border-b border-primary/20 ${
         isVisible
           ? 'max-h-200 opacity-100 py-6'
@@ -32,7 +34,7 @@ export default function Settings() {
           <div className="flex flex-col gap-4">
             <div className="flex flex-col md:flex-row w-full gap-x-6 gap-y-4">
               <div className="flex flex-col gap-2 flex-1 h-12">
-                <h3 className="text-center tracking-wider">Appearance</h3>
+                <div className="text-center tracking-wider">Appearance</div>
                 <div className="flex w-full h-12 *:flex-1 *:min-w-0">
                   <ThemeSwitcher />
                   <FontSwitcher />
@@ -46,7 +48,7 @@ export default function Settings() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <h3 className="text-center tracking-wider">Text to Speech</h3>
+            <div className="text-center tracking-wider">Text to Speech</div>
 
             <div className="w-full">
               <Voices />

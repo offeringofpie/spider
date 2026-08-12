@@ -25,6 +25,10 @@ export function normalizeImages(html: string): string {
     );
 }
 
+export function lazyLoadImages(html: string): string {
+  return html.replace(/<img\b(?![^>]*\bloading=)/gi, '<img loading="lazy" decoding="async"');
+}
+
 export function stripAtLinks(html: string): string {
   return html
     .replace(/href=["']at:\/\/[^"']*["']/gi, 'href="#"')

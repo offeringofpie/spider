@@ -16,9 +16,49 @@ const {
   type = 'article',
   author = '',
   publishedTime = '',
+  canonical = Astro.url.href,
+  noindex = false,
 } = Astro.props;
 
 const isDefaultImage = image === defaultImage;
+
+const siteGraph = [
+  {
+    '@type': 'WebSite',
+    '@id': 'https://spider.jlopes.eu/#website',
+    url: 'https://spider.jlopes.eu/',
+    name: 'Spider Parser',
+    description: 'Parse news articles and web pages with ease.',
+  },
+  {
+    '@type': 'WebApplication',
+    '@id': 'https://spider.jlopes.eu/#app',
+    name: 'Spider Parser',
+    url: 'https://spider.jlopes.eu/',
+    description: 'A clean reader view for news articles and web pages.',
+    applicationCategory: 'UtilityApplication',
+    browserRequirements:
+      'Requires a modern web browser with JavaScript enabled.',
+    isPartOf: { '@id': 'https://spider.jlopes.eu/#website' },
+  },
+];
+
+const articleNode =
+  type === 'article' && title !== 'Spider Parser'
+    ? {
+        '@type': 'Article',
+        '@id': `${canonical}#article`,
+        headline: title,
+        description,
+        url: canonical,
+        mainEntityOfPage: { '@id': canonical },
+        ...(image !== defaultImage && { image }),
+        ...(author && { author: { '@type': 'Person', name: author } }),
+        ...(publishedTime && { datePublished: publishedTime }),
+      }
+    : null;
+
+const graph = articleNode ? [...siteGraph, articleNode] : siteGraph;
 
 defaultStore.subscribe(() => {
   const currentState = defaultStore.getState();
@@ -33,8 +73,10 @@ defaultStore.subscribe(() => {
 <html lang="en" data-theme={currentTheme} data-font={currentFont}>
   <head>
     <title>{title}</title>
-    <link rel="canonical" href={Astro.url.href} />
+    <link rel="canonical" href={canonical} />
     <link rel="alternate" href="/llms.txt" title="LLMs.txt" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0a0a0a" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
@@ -84,48 +126,24 @@ defaultStore.subscribe(() => {
     }
     <meta
       name="robots"
-      content="max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+      content={
+        noindex
+          ? 'noindex, follow'
+          : 'max-snippet:-1, max-image-preview:large, max-video-preview:-1'
+      }
     />
     <script
       id="app-jsonld"
       type="application/ld+json"
       set:html={JSON.stringify({
         '@context': 'https://schema.org',
-        '@graph': [
-          {
-            '@type': 'WebSite',
-            '@id': 'https://spider.jlopes.eu/#website',
-            url: 'https://spider.jlopes.eu/',
-            name: 'Spider Parser',
-            description: 'Parse news articles and web pages with ease.',
-          },
-          {
-            '@type': 'WebApplication',
-            '@id': 'https://spider.jlopes.eu/#app',
-            name: 'Spider Parser',
-            url: 'https://spider.jlopes.eu/',
-            description: 'A clean reader view for news articles and web pages.',
-            applicationCategory: 'UtilityApplication',
-            browserRequirements:
-              'Requires a modern web browser with JavaScript enabled.',
-            isPartOf: { '@id': 'https://spider.jlopes.eu/#website' },
-          },
-        ],
+        '@graph': graph,
       })}
     />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link
-      rel="preconnect"
-      href="https://fonts.gstatic.com"
-      crossorigin="anonymous"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Almendra:ital,wght@0,400;0,700;1,400&family=Comic+Neue:ital,wght@0,400;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Pinyon+Script&display=swap"
-      rel="stylesheet"
-    />
   </head>
   <body>
+    <a class="skip-link" href="#main">Skip to content</a>
     <slot />
 
     <script>
@@ -145,6 +163,12 @@ defaultStore.subscribe(() => {
         const font = state.font;
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.setAttribute('data-font', font);
+
+        const meta = document.querySelector('meta[name="theme-color"]');
+        const base = getComputedStyle(document.documentElement)
+          .getPropertyValue('--color-base-100')
+          .trim();
+        if (meta && base) meta.setAttribute('content', base);
       }
 
       updateTheme();
@@ -158,6 +182,25 @@ defaultStore.subscribe(() => {
   body {
     margin: 0;
     width: 100%;
-    height: 100%;
+  }
+
+  html {
+    min-height: 100%;
+  }
+
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 100;
+    padding: 0.75rem 1rem;
+    background: var(--color-base-100);
+    color: var(--color-primary);
+    border: 2px solid currentColor;
+    border-radius: 0 0 0.5rem 0;
+  }
+
+  .skip-link:focus {
+    left: 0;
   }
 </style>

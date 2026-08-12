@@ -3,6 +3,23 @@ import { defaultStore, useStore } from '../store/store';
 import TOC from '../components/TOC';
 import ArchiveNotice from '../components/ArchiveNotice';
 
+const rtlLanguages = new Set([
+  'ar',
+  'ckb',
+  'dv',
+  'fa',
+  'he',
+  'ps',
+  'sd',
+  'ur',
+  'yi',
+]);
+
+const direction = (lang: string | null) => {
+  if (!lang) return undefined;
+  return rtlLanguages.has(lang.split('-')[0].toLowerCase()) ? 'rtl' : undefined;
+};
+
 const textSizeClasses: Record<string, string> = {
   'prose-base': 'prose-sm sm:prose-base',
   'prose-lg': 'prose-sm sm:prose-lg',
@@ -17,6 +34,7 @@ export default function Home() {
   useEffect(() => {
     if (doc.kind !== 'loaded') return;
     document.querySelectorAll('#article-content a').forEach((a) => {
+      if (a.getAttribute('href')?.startsWith('#')) return;
       a.setAttribute('target', '_blank');
       a.setAttribute('rel', 'noopener noreferrer');
     });
@@ -64,6 +82,8 @@ export default function Home() {
             <TOC htmlContent={doc.post.content} />
             <div
               id="article-content"
+              lang={doc.post.lang ?? undefined}
+              dir={direction(doc.post.lang)}
               className={`prose prose-invert mx-auto ${textSizeClasses[state.textSize] ?? state.textSize} ${state.lineHeight}
                 prose-headings:font-semibold
                 prose-headings:tracking-tight

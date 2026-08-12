@@ -91,6 +91,7 @@ interface ParsedPost {
   lead_image_url: string | null;
   dek: string | null;
   excerpt: string | null;
+  lang: string | null;
 }
 
 interface IdleDoc {

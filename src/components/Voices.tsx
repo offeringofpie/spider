@@ -179,7 +179,7 @@ export default function Voices() {
             min="0.5"
             max="2"
             value={rate}
-            className="range range-secondary hover:range-primary range-xs w-full"
+            className="range range-secondary hover:range-primary range-md w-full"
             step="0.1"
             onChange={updateRate}
           />
@@ -204,7 +204,7 @@ export default function Voices() {
             min="0"
             max="2"
             value={pitch}
-            className="range range-secondary hover:range-primary range-xs w-full"
+            className="range range-secondary hover:range-primary range-md w-full"
             step="0.1"
             onChange={updatePitch}
           />
@@ -228,7 +228,7 @@ export default function Voices() {
             min="0"
             max="1"
             value={volume}
-            className="range range-secondary hover:range-primary range-xs w-full"
+            className="range range-secondary hover:range-primary range-md w-full"
             step="0.1"
             onChange={updateVolume}
           />

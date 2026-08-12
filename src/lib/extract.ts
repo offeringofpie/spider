@@ -38,6 +38,13 @@ export function titleFromHtml(html: string): string | null {
   return match ? match[1].replace(/<[^>]+>/g, '').trim() || null : null;
 }
 
+export function htmlLang(html: string): string | null {
+  const match = html.match(/<html[^>]*\slang=["']([^"']+)["']/i);
+  if (!match) return null;
+  const lang = match[1].trim();
+  return /^[a-z]{2,3}(-[a-z0-9]+)*$/i.test(lang) ? lang : null;
+}
+
 export function extractDataRaw(html: string): string | null {
   const match = html.match(/data-raw="([^"]*)"/);
   if (!match) return null;

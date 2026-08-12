@@ -9,6 +9,7 @@ export default function FontSwitcher() {
 
   return (
     <select
+      aria-label="Font"
       className="select select-primary  border-l-0 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base-100 text-primary-focus hover:text-primary text-sm rounded-none rounded-r-xl cursor-pointer transition-all"
       defaultValue={state.font}
       onChange={change}

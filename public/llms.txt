@@ -16,4 +16,4 @@ Spider Parser fetches and parses any public news article or web page and present
 
 ## Author
 
-Built by J Lopes — https://jlopes.eu/about
+Built by J Lopes — https://jlopes.eu/about/

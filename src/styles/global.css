@@ -24,6 +24,26 @@ body {
     sans-serif;
 }
 
+html {
+  --bg-lift: light-dark(
+    oklch(from var(--color-base-100) calc(l + 0.012) c h),
+    oklch(from var(--color-base-100) calc(l + 0.035) c h)
+  );
+  --bg-deep: light-dark(
+    oklch(from var(--color-base-100) calc(l * 0.94) c h),
+    oklch(from var(--color-base-100) calc(l * 0.4) c h)
+  );
+
+  background-image: linear-gradient(
+    to bottom,
+    var(--bg-lift),
+    var(--color-base-100) 35%,
+    var(--bg-deep)
+  );
+  background-repeat: no-repeat;
+  background-size: 100% max(100%, 250vh);
+}
+
 .tts {
   background-color: var(--color-primary) !important;
   color: var(--color-primary-content) !important;

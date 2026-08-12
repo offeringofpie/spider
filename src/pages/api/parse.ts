@@ -1,6 +1,7 @@
 import Parser from '@jocmp/mercury-parser';
 import { preserveMediaEmbeds, restoreMediaEmbeds } from '../../lib/embed';
 import {
+  lazyLoadImages,
   normalizeImages,
   stripAtLinks,
   stripHeadingAttrs,
@@ -10,6 +11,7 @@ import {
   ampUrl,
   countWords,
   extractDataRaw,
+  htmlLang,
   metaDescription,
   paywallTeaser,
   titleFromHtml,
@@ -203,7 +205,13 @@ async function parse(sourceUrl: string, html: string) {
     contentType: 'html',
     fetchAllPages: false,
   });
-  if (parsed.content) parsed.content = restoreMediaEmbeds(parsed.content);
+  if (parsed.content)
+    parsed.content = lazyLoadImages(restoreMediaEmbeds(parsed.content));
+  return parsed;
+}
+
+function withLang<T>(parsed: T, lang: string | null): T {
+  if (parsed && lang) (parsed as { lang?: string | null }).lang ??= lang;
   return parsed;
 }
 
@@ -283,7 +291,8 @@ async function tryStrategy(
       return success(parsed, fetchUrl, strategy.name, text.length, true);
     }
 
-    const parsed = await parse(url.href, text);
+    const lang = htmlLang(text);
+    const parsed = withLang(await parse(url.href, text), lang);
 
     if (botChallenge(text, parsed.title ?? null)) {
       throw new Error('Bot challenge detected');
@@ -293,7 +302,7 @@ async function tryStrategy(
     const mercuryWords = countWords(parsed.content);
     const paywallDetected = paywall(text, mercuryWords);
 
-    const structured = structuredArticle(text, url.href);
+    const structured = withLang(structuredArticle(text, url.href), lang);
     const structuredWords = countWords(structured?.content);
     if (
       structured &&
@@ -324,7 +333,7 @@ async function tryStrategy(
     }
 
     if (!mercuryContent || mercuryWords < confidentWords) {
-      const defuddled = await parseWithDefuddle(text, url.href);
+      const defuddled = withLang(await parseWithDefuddle(text, url.href), lang);
       const defuddleWords = countWords(defuddled?.content);
       if (
         defuddled &&
@@ -338,7 +347,7 @@ async function tryStrategy(
 
     const rawMd = extractDataRaw(text);
     if (rawMd) {
-      const mdParsed = parseMarkdown(rawMd, url.href);
+      const mdParsed = withLang(parseMarkdown(rawMd, url.href), lang);
       if (mdParsed.content?.trim()) {
         if (!mdParsed.title) mdParsed.title = titleFromHtml(text);
         return success(mdParsed, fetchUrl, strategy.name, text.length, true);

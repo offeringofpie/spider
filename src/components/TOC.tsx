@@ -144,7 +144,7 @@ export default function Toc({ htmlContent }: { htmlContent: string }) {
               >
                 <a
                   href={`#${h.id}`}
-                  className={`text-sm hover:text-info transition-colors block truncate ${
+                  className={`text-sm hover:text-info transition-colors block truncate min-h-6 py-1 ${
                     activeId === h.id
                       ? 'text-primary font-semibold'
                       : 'text-base-content/80'
@@ -194,7 +194,7 @@ export default function Toc({ htmlContent }: { htmlContent: string }) {
                     aria-label={h.text}
                     aria-current={isActive ? 'location' : undefined}
                     onClick={(e) => scrollToSection(e, h.id)}
-                    className="flex items-center justify-end w-full py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                    className="flex items-center justify-end w-full min-h-6 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
                   >
                     <div
                       className={`

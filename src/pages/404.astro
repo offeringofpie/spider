@@ -1,0 +1,25 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Sprite from '../components/Sprite';
+---
+
+<Layout
+  title="Page not found | Spider Parser"
+  description="That page does not exist. Head back to Spider Parser and paste an article URL."
+  type="website"
+  canonical="https://spider.jlopes.eu/"
+  noindex
+>
+  <main id="main" tabindex="-1" class="mx-auto max-w-4xl px-4 py-10">
+    <div class="text-base-content text-center py-24">
+      <h1 class="font-semibold tracking-tight text-4xl text-primary mb-4">
+        Page not found
+      </h1>
+      <p class="text-base-content/70 mb-8">
+        How did you get here?
+      </p>
+      <a class="btn btn-primary" href="/">Back to Spider</a>
+    </div>
+    <Sprite />
+  </main>
+</Layout>

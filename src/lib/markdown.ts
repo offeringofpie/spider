@@ -1,4 +1,5 @@
 import { marked } from 'marked';
+import { lazyLoadImages } from './clean';
 
 export function isMarkdown(url: URL, contentType: string): boolean {
   return (
@@ -13,13 +14,16 @@ interface ArticleExtras {
   datePublished?: string | null;
   leadImageUrl?: string | null;
   wordCount?: number;
+  lang?: string | null;
 }
 
 export function articleResult(
-  content: string,
+  rawContent: string,
   sourceUrl: string,
   extras: ArticleExtras = {},
 ) {
+  const content = lazyLoadImages(rawContent);
+
   const excerptMatch = content.match(/<p>([\s\S]*?)<\/p>/);
   const excerpt = excerptMatch
     ? excerptMatch[1]
@@ -42,6 +46,7 @@ export function articleResult(
     lead_image_url: extras.leadImageUrl ?? null,
     dek: null as string | null,
     excerpt,
+    lang: extras.lang ?? null,
   };
 }
 
