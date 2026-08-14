@@ -37,7 +37,7 @@ const SettingsButton = ({ variant = 'header', tabIndex = 0 }: Props) => {
     <button
       onClick={toggleSettings}
       tabIndex={tabIndex}
-      className={`text-primary-focus cursor-pointer hover:text-primary h-full relative transition-all duration-300 ${state.showSettings ? 'text-primary rotate-180 origin-center' : ''}`}
+      className={`text-primary cursor-pointer h-full relative transition-all duration-300 ${state.showSettings ? 'text-primary rotate-180 origin-center' : ''}`}
       title="Settings"
       aria-label="Settings"
     >

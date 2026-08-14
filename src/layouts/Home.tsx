@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
+import { isLight } from '../lib/themes';
+import { loadArticle, isUrl } from '../lib/load';
 import TOC from '../components/TOC';
 import ArchiveNotice from '../components/ArchiveNotice';
 
@@ -23,8 +25,8 @@ const direction = (lang: string | null) => {
 const textSizeClasses: Record<string, string> = {
   'prose-base': 'prose-sm sm:prose-base',
   'prose-lg': 'prose-sm sm:prose-lg',
-  'prose-xl': 'prose-base sm:prose-xl',
-  'prose-2xl': 'prose-lg sm:prose-2xl',
+  'prose-xl': 'prose-sm sm:prose-xl',
+  'prose-2xl': 'prose-base sm:prose-2xl',
 };
 
 export default function Home() {
@@ -33,11 +35,30 @@ export default function Home() {
 
   useEffect(() => {
     if (doc.kind !== 'loaded') return;
+
+    const content = document.getElementById('article-content');
+    if (!content) return;
+
     document.querySelectorAll('#article-content a').forEach((a) => {
       if (a.getAttribute('href')?.startsWith('#')) return;
-      a.setAttribute('target', '_blank');
       a.setAttribute('rel', 'noopener noreferrer');
     });
+
+    const handleClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+      const link = (e.target as Element | null)?.closest?.('a');
+      const href = link?.getAttribute('href');
+      if (!href || href.startsWith('#')) return;
+      if (!isUrl(link!.href)) return;
+
+      e.preventDefault();
+      loadArticle(link!.href);
+    };
+
+    content.addEventListener('click', handleClick);
+    return () => content.removeEventListener('click', handleClick);
   }, [doc]);
 
   switch (doc.kind) {
@@ -58,7 +79,7 @@ export default function Home() {
 
     case 'error':
       return (
-        <div className="w-full mx-auto max-w-4xl px-4 text-base-content">
+        <div className="w-full mx-auto max-w-4xl text-base-content">
           <article className="text-left">
             <h1 className="font-semibold tracking-tight text-2xl text-error mb-4">
               Could not render this article
@@ -70,7 +91,7 @@ export default function Home() {
 
     case 'loaded':
       return (
-        <div className="w-full px-3 text-base-content">
+        <div className="w-full text-base-content">
           <article className="text-left">
             <span role="status" className="sr-only">
               {state.ttsState === 'speaking'
@@ -84,12 +105,12 @@ export default function Home() {
               id="article-content"
               lang={doc.post.lang ?? undefined}
               dir={direction(doc.post.lang)}
-              className={`prose prose-invert mx-auto ${textSizeClasses[state.textSize] ?? state.textSize} ${state.lineHeight}
+              className={`prose ${isLight(state.theme) ? '' : 'prose-invert'} mx-auto ${textSizeClasses[state.textSize] ?? state.textSize} ${state.lineHeight}
                 prose-headings:font-semibold
                 prose-headings:tracking-tight
                 prose-headings:block
                 prose-p:my-4
-                prose-a:text-info prose-a:underline prose-a:underline-offset-2`}
+                prose-a:underline prose-a:underline-offset-2`}
               dangerouslySetInnerHTML={{ __html: doc.post.content }}
             />
             {doc.paywalled && (

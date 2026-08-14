@@ -26,6 +26,7 @@ export async function parseWithDefuddle(html: string, sourceUrl: string) {
 
     const parsed = articleResult(content, sourceUrl, {
       title: result.title ?? null,
+      author: result.author ?? null,
       datePublished: result.published ?? null,
       leadImageUrl: result.image ?? null,
       wordCount:

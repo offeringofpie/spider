@@ -31,6 +31,7 @@ const contentKeys = new Set([
 interface JsonLdArticle {
   articleBody: string;
   headline: string | null;
+  author: string | null;
   datePublished: string | null;
   image: string | null;
 }
@@ -65,6 +66,16 @@ function collectNodes(data: unknown): JsonNode[] {
   return out;
 }
 
+function authorName(author: unknown): string | null {
+  if (typeof author === 'string') return str(author);
+  if (Array.isArray(author)) {
+    const names = author.map(authorName).filter(Boolean);
+    return names.length ? names.join(', ') : null;
+  }
+  if (author && typeof author === 'object') return str((author as JsonNode).name);
+  return null;
+}
+
 function imageUrl(image: unknown): string | null {
   if (typeof image === 'string') return image;
   if (Array.isArray(image)) return imageUrl(image[0]);
@@ -92,6 +103,7 @@ export function jsonLdArticle(html: string): JsonLdArticle | null {
         best = {
           articleBody: body,
           headline: str(node.headline) ?? str(node.name),
+          author: authorName(node.author),
           datePublished: str(node.datePublished) ?? str(node.dateCreated),
           image: imageUrl(node.image),
         };
@@ -184,6 +196,7 @@ export function structuredArticle(html: string, sourceUrl: string) {
     title: string | null;
     date: string | null;
     image: string | null;
+    author: string | null;
   }> = [];
 
   if (jsonLd) {
@@ -192,6 +205,7 @@ export function structuredArticle(html: string, sourceUrl: string) {
       title: jsonLd.headline,
       date: jsonLd.datePublished,
       image: jsonLd.image,
+      author: jsonLd.author,
     });
   }
   if (hydration) {
@@ -200,6 +214,7 @@ export function structuredArticle(html: string, sourceUrl: string) {
       title: null,
       date: null,
       image: null,
+      author: null,
     });
   }
   if (!candidates.length) return null;
@@ -211,6 +226,7 @@ export function structuredArticle(html: string, sourceUrl: string) {
 
   return articleResult(content, sourceUrl, {
     title: best.title,
+    author: best.author,
     datePublished: best.date,
     leadImageUrl: best.image ?? leadImage(content),
   });

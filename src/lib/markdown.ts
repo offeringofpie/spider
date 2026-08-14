@@ -11,6 +11,7 @@ export function isMarkdown(url: URL, contentType: string): boolean {
 
 interface ArticleExtras {
   title?: string | null;
+  author?: string | null;
   datePublished?: string | null;
   leadImageUrl?: string | null;
   wordCount?: number;
@@ -41,6 +42,7 @@ export function articleResult(
     title: extras.title ?? null,
     content,
     url: sourceUrl,
+    author: extras.author ?? null,
     word_count: extras.wordCount ?? words.length,
     date_published: extras.datePublished ?? null,
     lead_image_url: extras.leadImageUrl ?? null,

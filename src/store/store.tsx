@@ -1,44 +1,44 @@
 import { useState, useEffect } from 'react';
 
-class Store<T> {
+class Store<T extends object> {
   private state: T;
   private subscribers: ((state: T) => void)[] = [];
   private key: string;
+  private persist: (keyof T)[];
 
-  constructor(initialState: T, key: string) {
+  constructor(initialState: T, key: string, persist: (keyof T)[]) {
     this.key = key;
-
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const storedState = localStorage.getItem(this.key);
-      if (storedState) {
-        this.state = { ...initialState, ...JSON.parse(storedState) };
-      } else {
-        this.state = initialState;
-        this.saveState();
-      }
-    } else {
-      this.state = initialState;
-    }
+    this.persist = persist;
+    this.state = { ...initialState, ...this.readPersisted() };
   }
 
-  // Load state from localStorage or use initial state if not found
-  private loadState(initialState: T): T {
+  private readPersisted(): Partial<T> {
+    if (typeof window === 'undefined' || !window.localStorage) return {};
+
     try {
-      const storedState = localStorage.getItem(this.key);
-      return storedState ? JSON.parse(storedState) : initialState;
+      const stored = localStorage.getItem(this.key);
+      if (!stored) return {};
+
+      const parsed = JSON.parse(stored) as Partial<T>;
+      const subset: Partial<T> = {};
+      for (const key of this.persist) {
+        if (key in parsed) subset[key] = parsed[key];
+      }
+      return subset;
     } catch {
-      return initialState;
+      return {};
     }
   }
 
-  // Save current state to localStorage
   private saveState() {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      try {
-        localStorage.setItem(this.key, JSON.stringify(this.state));
-      } catch (error) {
-        console.warn('Failed to save state to localStorage:', error);
-      }
+    if (typeof window === 'undefined' || !window.localStorage) return;
+
+    try {
+      const subset: Partial<T> = {};
+      for (const key of this.persist) subset[key] = this.state[key];
+      localStorage.setItem(this.key, JSON.stringify(subset));
+    } catch (error) {
+      console.warn('Failed to save state to localStorage:', error);
     }
   }
 
@@ -70,7 +70,7 @@ class Store<T> {
 }
 
 // Custom React hook to use the Store in components
-function useStore<T>(store: Store<T>) {
+function useStore<T extends object>(store: Store<T>) {
   const [state, setState] = useState(store.getState());
 
   useEffect(() => {
@@ -86,6 +86,7 @@ interface ParsedPost {
   title: string | null;
   content: string;
   url: string;
+  author: string | null;
   word_count: number | null;
   date_published: string | null;
   lead_image_url: string | null;
@@ -143,10 +144,8 @@ const defaultStore = new Store<DefaultState>(
     lineHeight: 'leading-relaxed',
   },
   'default-state',
+  ['theme', 'font', 'textSize', 'lineHeight'],
 );
 
-if (defaultStore.getState().document.kind !== 'idle') {
-  defaultStore.setState({ document: { kind: 'idle' } });
-}
-
 export { defaultStore, useStore };
+export type { ParsedPost, DocumentState, DefaultState };

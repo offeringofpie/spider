@@ -3,8 +3,8 @@ import { defaultStore } from '../store/store';
 import '../styles/global.css';
 
 const state = defaultStore.getState();
-let currentTheme = state.theme;
-let currentFont = state.font;
+const currentTheme = state.theme;
+const currentFont = state.font;
 
 const defaultImage = 'https://spider.jlopes.eu/spiderweb.jpg';
 
@@ -60,13 +60,6 @@ const articleNode =
 
 const graph = articleNode ? [...siteGraph, articleNode] : siteGraph;
 
-defaultStore.subscribe(() => {
-  const currentState = defaultStore.getState();
-  const theme = currentState.theme;
-  const font = currentState.font;
-  currentTheme = theme;
-  currentFont = font;
-});
 ---
 
 <!doctype html>
@@ -76,9 +69,10 @@ defaultStore.subscribe(() => {
     <link rel="canonical" href={canonical} />
     <link rel="alternate" href="/llms.txt" title="LLMs.txt" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#0a0a0a" />
+    <meta name="theme-color" content="#001e29" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
@@ -150,9 +144,6 @@ defaultStore.subscribe(() => {
       import { defaultStore } from '../store/store';
 
       defaultStore.setState({
-        posts: false,
-        loading: false,
-        loaded: false,
         initialized: true,
         showTranslateBar: false,
       });

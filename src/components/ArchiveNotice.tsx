@@ -32,7 +32,7 @@ export default function ArchiveNotice({ message, url }: Props) {
             href={l.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-info underline underline-offset-2"
+            className="themed-link text-base-content underline"
           >
             {l.label}
           </a>

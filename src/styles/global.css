@@ -44,6 +44,27 @@ html {
   background-size: 100% max(100%, 250vh);
 }
 
+#article-content {
+  --tw-prose-body: var(--color-base-content);
+  --tw-prose-bold: var(--color-base-content);
+  --tw-prose-quotes: var(--color-base-content);
+  --tw-prose-bullets: var(--color-base-content);
+  --tw-prose-counters: var(--color-base-content);
+  --tw-prose-links: var(--color-base-content);
+}
+
+.themed-link,
+#article-content a {
+  text-decoration-color: var(--color-primary);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.themed-link:hover,
+#article-content a:hover {
+  text-decoration-thickness: 2px;
+}
+
 .tts {
   background-color: var(--color-primary) !important;
   color: var(--color-primary-content) !important;
@@ -87,4 +108,86 @@ html {
 
 .join-item:focus-visible {
   z-index: 20;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  html {
+    background: #fff !important;
+    background-image: none !important;
+  }
+
+  body {
+    color: #000 !important;
+  }
+
+  header,
+  .hero-backdrop {
+    display: none !important;
+  }
+
+  #article-content,
+  #article-content *,
+  #article-content *::marker,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: #000 !important;
+    background: transparent !important;
+    text-shadow: none !important;
+    filter: none !important;
+  }
+
+  #article-content a[href^='http']::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.75em;
+    overflow-wrap: anywhere;
+  }
+
+  #article-content p,
+  #article-content li {
+    overflow-wrap: anywhere;
+  }
+
+  #article-content img,
+  figure,
+  blockquote,
+  pre,
+  table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #article-content img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .tts {
+    background: transparent !important;
+    color: #000 !important;
+  }
 }

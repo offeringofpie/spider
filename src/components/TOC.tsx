@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { scrollBehavior } from '../lib/motion';
 
 interface Heading {
   id: string;
@@ -109,7 +110,7 @@ export default function Toc({ htmlContent }: { htmlContent: string }) {
 
       window.scrollTo({
         top: offsetPosition,
-        behavior: 'smooth',
+        behavior: scrollBehavior(),
       });
     }
   };
@@ -144,10 +145,8 @@ export default function Toc({ htmlContent }: { htmlContent: string }) {
               >
                 <a
                   href={`#${h.id}`}
-                  className={`text-sm hover:text-info transition-colors block truncate min-h-6 py-1 ${
-                    activeId === h.id
-                      ? 'text-primary font-semibold'
-                      : 'text-base-content/80'
+                  className={`text-sm text-base-content hover:underline underline-offset-2 decoration-primary transition-colors block truncate min-h-6 py-1 ${
+                    activeId === h.id ? 'font-semibold underline' : ''
                   }`}
                   onClick={(e) => scrollToSection(e, h.id)}
                 >
@@ -161,7 +160,7 @@ export default function Toc({ htmlContent }: { htmlContent: string }) {
 
       {}
       <div className="hidden lg:flex fixed right-4 xl:right-8 top-32 z-40 print:hidden">
-        <div className="group flex flex-col items-end w-10 hover:w-64 transition-all duration-300 ease-in-out">
+        <div className="group flex flex-col items-end w-10 hover:w-64 overflow-hidden transition-all duration-300 ease-in-out">
           {}
           <div className="w-10 h-10 flex items-center justify-center bg-base-100 rounded-full shadow-sm text-primary mb-4 shrink-0 pointer-events-none">
             <svg
@@ -191,15 +190,23 @@ export default function Toc({ htmlContent }: { htmlContent: string }) {
                 >
                   <a
                     href={`#${h.id}`}
-                    aria-label={h.text}
                     aria-current={isActive ? 'location' : undefined}
                     onClick={(e) => scrollToSection(e, h.id)}
-                    className="flex items-center justify-end w-full min-h-6 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                    className="group/item flex items-center justify-end gap-2 w-full min-h-6 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
                   >
+                    <span
+                      className={`
+                      min-w-0 truncate text-xs text-right text-base-content opacity-0 group-hover:opacity-100 transition-opacity duration-300
+                      ${isActive ? 'font-semibold' : ''}
+                    `}
+                      style={{ paddingLeft: `${(h.level - 1) * 0.5}rem` }}
+                    >
+                      {h.text}
+                    </span>
                     <div
                       className={`
                       w-3 h-0.5 z-10 shrink-0 transition-all duration-300 shadow-sm
-                      ${isActive ? 'bg-primary scale-125' : 'bg-secondary/30 hover:bg-secondary'}
+                      ${isActive ? 'bg-primary scale-125' : 'bg-secondary/30 group-hover/item:bg-secondary'}
                       mr-4
                     `}
                     />

@@ -11,7 +11,7 @@ const TextSettings = () => {
         </label>
         <select
           id="text-size"
-          className="select select-primary focus:outline-0 w-full text-primary-focus hover:text-primary rounded-xl cursor-pointer"
+          className="select select-primary focus:outline-0 w-full text-primary rounded-xl cursor-pointer"
           value={state.textSize || 'prose-xl'}
           onChange={(e) => setState({ textSize: e.target.value })}
         >
@@ -27,7 +27,7 @@ const TextSettings = () => {
         </label>
         <select
           id="line-spacing"
-          className="select select-primary focus:outline-0 w-full text-primary-focus hover:text-primary rounded-xl cursor-pointer"
+          className="select select-primary focus:outline-0 w-full text-primary rounded-xl cursor-pointer"
           value={state.lineHeight || 'leading-relaxed'}
           onChange={(e) => setState({ lineHeight: e.target.value })}
         >

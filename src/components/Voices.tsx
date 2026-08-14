@@ -157,7 +157,7 @@ export default function Voices() {
         </label>
         <select
           id="voice-select"
-          className="select select-secondary focus:outline-0 w-full text-primary-focus hover:text-primary rounded-xl cursor-pointer"
+          className="select select-secondary focus:outline-0 w-full text-primary rounded-xl cursor-pointer"
           onChange={updateVoice}
           value={voice}
         >

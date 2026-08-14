@@ -1,90 +1,38 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { defaultStore, useStore } from '../store/store';
+import { loadArticle, currentQuery, urlFromShare } from '../lib/load';
+import { scrollBehavior } from '../lib/motion';
 import SettingsButton from './SettingsButton';
 
 export default function Header() {
-  const [value, setValue] = useState('');
-  const [state, setState] = useStore(defaultStore);
+  const [state] = useStore(defaultStore);
   const [isEmbedded, setIsEmbedded] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const embedded = document.documentElement.dataset.embedded === 'true';
-      setIsEmbedded(embedded);
+    setIsEmbedded(document.documentElement.dataset.embedded === 'true');
 
-      const urlParams = new URLSearchParams(window.location.search);
-      const q = urlParams.get('q');
-      if (q) {
-        setValue(q);
-        fetchData(q);
-      }
-    }
+    const shared = urlFromShare(new URLSearchParams(window.location.search));
+    if (shared) loadArticle(shared, { history: 'replace' });
   }, []);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const url = e.currentTarget.querySelector<HTMLInputElement>('#url')!.value;
-    setValue(url);
-    fetchData(url);
-  }
-
-  if (isEmbedded) {
-    return null;
-  }
-
-  const isUrl = (string: string) => {
-    try {
-      return Boolean(new URL(string));
-    } catch (e) {
-      return false;
-    }
-  };
-
-  async function fetchData(url: string, { forceRefresh = false } = {}) {
-    if (!isUrl(url)) return;
-
-    try {
-      setState({ document: { kind: 'loading' } });
-
-      const apiUrl = forceRefresh
-        ? `/api/parse?q=${encodeURIComponent(url)}&_t=${Date.now()}`
-        : `/api/parse?q=${encodeURIComponent(url)}`;
-
-      const res = await fetch(apiUrl, {
-        headers: { accept: 'application/json' },
-      });
-      const data = await res.json();
-
-      if (res.ok && data.content) {
-        setState({
-          document: {
-            kind: 'loaded',
-            post: data,
-            leadImageUrl: data.lead_image_url ?? null,
-            paywalled: data.meta?.paywalled ?? false,
-          },
-        });
+  useEffect(() => {
+    const handlePopState = () => {
+      const q = currentQuery();
+      if (q) {
+        loadArticle(q, { history: 'none' });
       } else {
-        setState({
-          document: {
-            kind: 'error',
-            message: data.error ?? 'The source site returned an error.',
-            url,
-          },
-        });
+        defaultStore.setState({ document: { kind: 'idle' } });
       }
+    };
 
-      history.pushState({}, 'New Page', `?q=${encodeURIComponent(url)}`);
-    } catch (err) {
-      setState({
-        document: {
-          kind: 'error',
-          message: 'Failed to reach parser.',
-          url,
-        },
-      });
-    }
-  }
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (inputRef.current) inputRef.current.value = currentQuery() ?? '';
+  }, [state.document]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -98,23 +46,32 @@ export default function Header() {
 
       if (e.key === '/') {
         e.preventDefault();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: scrollBehavior() });
         document.getElementById('url')?.focus();
       }
 
-      if (e.key === '?' && value) {
+      const q = currentQuery();
+      if (e.key === '?' && q) {
         e.preventDefault();
-        fetchData(value, { forceRefresh: true });
+        loadArticle(q, { forceRefresh: true, history: 'none' });
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [value]);
+  }, []);
 
-  return isEmbedded ? (
-    <header>Hello world</header>
-  ) : (
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const url = e.currentTarget.querySelector<HTMLInputElement>('#url')!.value;
+    loadArticle(url);
+  }
+
+  if (isEmbedded) {
+    return null;
+  }
+
+  return (
     <header
       className={`navbar flex content-center justify-center w-full max-w-4xl mx-auto relative z-10 bg-transparent`}
     >
@@ -140,20 +97,20 @@ export default function Header() {
             <input
               type="text"
               id="url"
-              className="input input-accent bg-base-300 border-2 border-r-0 border-primary placeholder-primary-focus text-primary-focus text-sm rounded-none rounded-bl-lg block w-full pl-10 p-3 ease-linear h-full"
+              ref={inputRef}
+              className="input input-accent bg-base-300 border-2 border-r-0 border-primary placeholder-primary/50 text-primary text-sm rounded-none rounded-bl-lg block w-full pl-10 p-3 ease-linear h-full"
               placeholder="Paste a URL to read"
-              defaultValue={value}
               required
             />
             <button
               type="submit"
-              className="block bg-base-300 border-2 border-l-0 rounded-tr-xl border-primary top-0 right-0 text-primary-focus cursor-pointer hover:text-primary h-full px-2"
+              className="block bg-base-300 border-2 border-l-0 rounded-tr-xl border-primary top-0 right-0 text-primary cursor-pointer hover:text-primary h-full px-2"
               aria-label="Read article"
               title="Read article"
             >
               <svg
                 aria-hidden="true"
-                className="w-6 h-6 text-primary-focus"
+                className="w-6 h-6 text-primary"
                 viewBox="0 0 512 512"
               >
                 <use href="#eye" />

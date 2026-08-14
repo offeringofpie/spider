@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
+import type { ParsedPost } from '../store/store';
 
 const readTime = (wordCount: number) => {
   const wordsPerMinute = 200;
@@ -36,27 +38,77 @@ const formatDate = (dateString: string) => {
   return `${year}/${month}/${day}`;
 };
 
+const hostname = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return null;
+  }
+};
+
+function Meta({ post }: { post: ParsedPost }) {
+  const domain = hostname(post.url);
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/60">
+      {domain && <span className="truncate max-w-full">{domain}</span>}
+      {post.author && (
+        <>
+          <span aria-hidden="true">·</span>
+          <span className="truncate max-w-full">{post.author}</span>
+        </>
+      )}
+      {post.word_count && (
+        <>
+          <span aria-hidden="true">·</span>
+          <span>{readTime(post.word_count)} read time</span>
+        </>
+      )}
+      {post.date_published && (
+        <>
+          <span aria-hidden="true">·</span>
+          <time dateTime={post.date_published}>
+            {formatDate(post.date_published)}
+          </time>
+        </>
+      )}
+      <a
+        href={post.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="themed-link ms-auto text-base-content underline whitespace-nowrap"
+      >
+        View original
+      </a>
+    </div>
+  );
+}
+
 export default function Hero() {
   const [state] = useStore(defaultStore);
+  const [imageFailed, setImageFailed] = useState(false);
 
-  if (state.document.kind !== 'loaded') return null;
+  const doc = state.document;
+  const sourceUrl = doc.kind === 'loaded' ? doc.post.url : null;
 
-  const { post, leadImageUrl } = state.document;
+  useEffect(() => {
+    setImageFailed(false);
+  }, [sourceUrl]);
+
+  if (doc.kind !== 'loaded') return null;
+
+  const { post } = doc;
+  const leadImageUrl = imageFailed ? null : doc.leadImageUrl;
   const title = post.title ? stripSiteSuffix(post.title, post.url) : '';
 
   if (!leadImageUrl) {
     return (
-      <div className="relative max-w-4xl mx-auto px-6 pt-10">
-        <h1 className="font-semibold tracking-tight text-3xl md:text-4xl text-info mb-4">
+      <div className="relative max-w-4xl mx-auto px-4 pt-10">
+        <h1 className="font-semibold tracking-tight text-3xl md:text-4xl text-base-content mb-4">
           {title}
         </h1>
-        <div className="mb-6 flex flex-wrap items-center justify-between text-sm text-base-content/60">
-          {post.word_count && <p>{readTime(post.word_count)} read time</p>}
-          {post.date_published && (
-            <time className="mt-2 md:mt-0" dateTime={post.date_published}>
-              {formatDate(post.date_published)}
-            </time>
-          )}
+        <div className="mb-6">
+          <Meta post={post} />
         </div>
       </div>
     );
@@ -65,7 +117,7 @@ export default function Hero() {
   return (
     <div className="w-full" style={{ minHeight: '380px' }}>
       <div
-        className="inset-0 absolute max-w-full -z-1 bg-cover bg-center"
+        className="hero-backdrop inset-0 absolute max-w-full -z-1 bg-cover bg-center"
         style={{
           height: '600px',
           backgroundImage: `url(${leadImageUrl})`,
@@ -76,12 +128,13 @@ export default function Hero() {
         }}
       />
 
-      <div className="relative max-w-4xl mx-auto px-6 pt-10 pb-4 flex flex-col md:flex-row gap-8 items-start">
+      <div className="relative max-w-4xl mx-auto px-4 pt-10 pb-4 flex flex-col md:flex-row gap-8 items-start">
         <img
           src={leadImageUrl}
-          alt={title}
+          alt=""
           fetchPriority="high"
           decoding="async"
+          onError={() => setImageFailed(true)}
           className="w-full md:w-1/2 rounded-xl shadow-2xl object-cover shrink-0"
           style={{ height: '220px' }}
         />
@@ -98,13 +151,8 @@ export default function Hero() {
         </div>
       </div>
 
-      <div className="relative max-w-4xl mx-auto px-6 pb-10 flex justify-between text-sm text-base-content/60">
-        {post.word_count && <span>{readTime(post.word_count)} read time</span>}
-        {post.date_published && (
-          <time dateTime={post.date_published}>
-            {formatDate(post.date_published)}
-          </time>
-        )}
+      <div className="relative max-w-4xl mx-auto px-4 pb-10">
+        <Meta post={post} />
       </div>
     </div>
   );

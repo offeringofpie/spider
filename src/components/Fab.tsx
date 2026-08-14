@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { defaultStore, useStore } from '../store/store';
+import { scrollBehavior } from '../lib/motion';
 import SettingsButton from './SettingsButton';
 
 const blocks = 'h1, h2, h3, h4, h5, h6, p, li, blockquote';
@@ -124,7 +125,7 @@ export default function Fab() {
       rect.bottom <=
         (window.innerHeight || document.documentElement.clientHeight);
     if (!isInViewport) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
     }
   };
 
@@ -259,6 +260,22 @@ export default function Fab() {
           >
             <svg className="w-5 h-5" viewBox="0 0 458.624 458.624">
               <use href="#share" />
+            </svg>
+          </div>
+        </button>
+        <button
+          onClick={() => {
+            setIsOpen(false);
+            window.print();
+          }}
+          tabIndex={menuTabIndex}
+          aria-label="Print Article"
+          className="bg-base-300/50 backdrop-blur-xs border border-base-200 text-base-content hover:bg-base-300/70 rounded-full flex items-center gap-2 pl-5 pr-2 h-14 transition-all"
+        >
+          <span className="text-sm font-medium">Print</span>
+          <div className="bg-warning/10 text-warning rounded-full p-2">
+            <svg className="w-5 h-5" viewBox="0 0 512 512">
+              <use href="#print" />
             </svg>
           </div>
         </button>
