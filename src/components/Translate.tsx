@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react';
 import { defaultStore, useStore } from '../store/store';
+import {
+  clearWidget,
+  hasNativeTranslator,
+  loadWidget,
+  restoreArticle,
+  setWidgetLanguage,
+  translateArticle,
+  widgetHostId,
+  widgetReady,
+} from '../lib/translate';
 
-declare global {
-  interface Window {
-    googleTranslateElementInit: () => void;
-    google: {
-      translate: {
-        TranslateElement: new (opts: { pageLanguage: string }, el: string) => unknown;
-      };
-    };
-  }
-}
-
-const LANGUAGES = [
+const languages = [
   { code: 'en', name: 'English' },
   { code: 'pt', name: 'Portuguese' },
   { code: 'nl', name: 'Dutch' },
@@ -27,70 +26,171 @@ const LANGUAGES = [
   { code: 'ko', name: 'Korean' },
   { code: 'eo', name: 'Esperanto' },
   { code: 'la', name: 'Latin' },
-];
+] as const;
 
-export default function TranslateBar() {
+const restoreValue = 'auto';
+const readyPollInterval = 500;
+const readyPollLimit = 30;
+
+type Engine = 'pending' | 'native' | 'widget';
+
+type Status =
+  | { kind: 'idle' }
+  | { kind: 'downloading'; progress: number }
+  | { kind: 'working'; progress: number }
+  | { kind: 'error'; message: string };
+
+export default function TranslateBar(): React.ReactElement {
   const [state, setState] = useStore(defaultStore);
+  const [engine, setEngine] = useState<Engine>('pending');
   const [isReady, setIsReady] = useState(false);
   const [hasError, setHasError] = useState(false);
-
+  const [status, setStatus] = useState<Status>({ kind: 'idle' });
+  const [translated, setTranslated] = useState(false);
   const [selectedLang, setSelectedLang] = useState('');
 
+  const doc = state.document;
+  const sourceLang = doc.kind === 'loaded' ? doc.post.lang : null;
+
   useEffect(() => {
-    if (!state.showTranslateBar) return;
-
-    if (!document.getElementById('google-translate-script')) {
-      window.googleTranslateElementInit = () => {
-        new window.google.translate.TranslateElement(
-          { pageLanguage: 'auto' },
-          'google_translate_element_hidden',
-        );
-      };
-      const script = document.createElement('script');
-      script.id = 'google-translate-script';
-      script.src =
-        'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
-      script.async = true;
-      document.body.appendChild(script);
+    if (hasNativeTranslator()) {
+      setEngine('native');
+      setIsReady(true);
+      return;
     }
+    setEngine('widget');
+  }, []);
 
-    let attempts = 0;
-    const checkReady = setInterval(() => {
-      attempts++;
-      if (document.querySelector('.goog-te-combo')) {
-        setIsReady(true);
-        clearInterval(checkReady);
-      } else if (attempts > 30) {
-        setHasError(true);
-        clearInterval(checkReady);
-      }
-    }, 500);
-
-    return () => clearInterval(checkReady);
-  }, [state.showTranslateBar]);
-
-  const handleTranslateClick = () => {
-    if (!selectedLang) return;
-
-    if (selectedLang === 'auto') {
-      document.cookie =
-        'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      document.cookie =
-        'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' +
-        document.domain;
-
-      window.location.reload();
+  useEffect(() => {
+    if (engine !== 'native') {
       return;
     }
 
-    const select = document.querySelector<HTMLSelectElement>('.goog-te-combo');
-    if (select) {
-      select.value = selectedLang;
-      select.dispatchEvent(
-        new Event('change', { bubbles: true, cancelable: true }),
-      );
+    restoreArticle();
+    setTranslated(false);
+    setStatus({ kind: 'idle' });
+    setSelectedLang('');
+  }, [doc, engine]);
+
+  useEffect(() => {
+    if (engine !== 'widget' || !state.showTranslateBar) {
+      return;
+    }
+
+    loadWidget();
+
+    let polls = 0;
+    const timer = setInterval(() => {
+      polls++;
+      if (widgetReady()) {
+        setIsReady(true);
+        clearInterval(timer);
+        return;
+      }
+      if (polls > readyPollLimit) {
+        setHasError(true);
+        clearInterval(timer);
+      }
+    }, readyPollInterval);
+
+    return () => clearInterval(timer);
+  }, [engine, state.showTranslateBar]);
+
+  const runWidget = () => {
+    if (selectedLang === restoreValue) {
+      clearWidget();
+      return;
+    }
+    setWidgetLanguage(selectedLang);
+  };
+
+  const runNative = async () => {
+    if (selectedLang === restoreValue) {
+      restoreArticle();
+      setTranslated(false);
+      setStatus({ kind: 'idle' });
+      return;
+    }
+
+    setStatus({ kind: 'working', progress: 0 });
+
+    const result = await translateArticle(selectedLang, {
+      sourceLang,
+      onDownload: (progress) => setStatus({ kind: 'downloading', progress }),
+      onProgress: (progress) => setStatus({ kind: 'working', progress }),
+    });
+
+    switch (result.kind) {
+      case 'translated': {
+        setTranslated(true);
+        setStatus({ kind: 'idle' });
+        return;
+      }
+      case 'unsupported': {
+        setEngine('widget');
+        setIsReady(false);
+        setStatus({
+          kind: 'error',
+          message: `${result.reason}. Using Google.`,
+        });
+        return;
+      }
+      case 'error': {
+        setStatus({ kind: 'error', message: result.message });
+        return;
+      }
+      default: {
+        const _exhaustive: never = result;
+        throw new Error(`Unhandled translate result: ${_exhaustive}`);
+      }
     }
   };
+
+  const handleTranslateClick = () => {
+    if (!selectedLang) {
+      return;
+    }
+    if (engine === 'native') {
+      runNative();
+      return;
+    }
+    runWidget();
+  };
+
+  const isBusy = status.kind === 'downloading' || status.kind === 'working';
+
+  const placeholder = () => {
+    if (hasError) {
+      return 'Translation blocked';
+    }
+    if (isReady) {
+      return 'Select language...';
+    }
+    return engine === 'native' ? 'Preparing...' : 'Connecting to Google...';
+  };
+
+  const message = () => {
+    switch (status.kind) {
+      case 'downloading': {
+        return `Downloading language model ${Math.round(status.progress * 100)}%`;
+      }
+      case 'working': {
+        return `Translating ${Math.round(status.progress * 100)}%`;
+      }
+      case 'error': {
+        return status.message;
+      }
+      case 'idle': {
+        return engine === 'native' ? 'Translate on device' : 'Translate';
+      }
+      default: {
+        const _exhaustive: never = status;
+        throw new Error(`Unhandled status: ${_exhaustive}`);
+      }
+    }
+  };
+
+  const canRestore = engine === 'native' ? translated : isReady;
 
   return (
     <div
@@ -104,48 +204,53 @@ export default function TranslateBar() {
       }`}
     >
       <div className="w-full mx-auto max-w-4xl px-6 p-4 flex items-center justify-between">
-        <div className="text-base-content hidden sm:block">Translate</div>
+        <div
+          className={`hidden sm:block ${status.kind === 'error' ? 'text-error' : 'text-base-content'}`}
+          role={isBusy || status.kind === 'error' ? 'status' : undefined}
+        >
+          {message()}
+        </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end relative">
-          <div id="google_translate_element_hidden" className="sr-only"></div>
+          <div id={widgetHostId} className="sr-only"></div>
 
           <select
             aria-label="Translate page to"
             className={`select select-bordered select-sm w-full max-w-xs bg-base-100 ${hasError ? 'select-error text-error' : 'select-primary'}`}
             onChange={(e) => setSelectedLang(e.target.value)}
             value={selectedLang}
-            disabled={!isReady || hasError}
+            disabled={!isReady || hasError || isBusy}
           >
             <option value="" disabled>
-              {hasError
-                ? 'Translation blocked'
-                : isReady
-                  ? 'Select language...'
-                  : 'Connecting to Google...'}
+              {placeholder()}
             </option>
-            {isReady && <option value="auto">Restore</option>}
-            {isReady && <option disabled>──────────</option>}
-            {LANGUAGES.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.name}
+            {canRestore && <option value={restoreValue}>Restore</option>}
+            {canRestore && <option disabled>──────────</option>}
+            {languages.map((language) => (
+              <option key={language.code} value={language.code}>
+                {language.name}
               </option>
             ))}
           </select>
 
           <button
             onClick={handleTranslateClick}
-            disabled={!isReady || !selectedLang || hasError}
+            disabled={!isReady || !selectedLang || hasError || isBusy}
             aria-label="Translate page"
             className="btn btn-ghost btn-sm"
           >
-            <svg
-              aria-hidden="true"
-              className="w-5 h-5 text-primary"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <use href="#translate" />
-            </svg>
+            {isBusy ? (
+              <span className="loading loading-spinner loading-xs text-primary"></span>
+            ) : (
+              <svg
+                aria-hidden="true"
+                className="w-5 h-5 text-primary"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <use href="#translate" />
+              </svg>
+            )}
           </button>
 
           <button

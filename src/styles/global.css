@@ -68,13 +68,33 @@ html {
 .tts {
   background-color: var(--color-primary) !important;
   color: var(--color-primary-content) !important;
-  border-radius: 0.25rem;
-  transition: all 0.15s ease-in-out;
+  border-radius: var(--radius-field);
+  transition: all 300ms ease-in-out;
+}
+
+.masthead {
+  min-height: 380px;
+}
+
+.hero-backdrop {
+  height: 600px;
+  filter: blur(12px) brightness(0.3) saturate(1.4);
+  mask-image: linear-gradient(to bottom, black 55%, transparent 90%);
+  -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 90%);
+}
+
+.masthead .cover {
+  height: 220px;
 }
 
 .skiptranslate iframe,
 .goog-te-banner-frame {
   display: none !important;
+}
+
+body:has(.goog-te-combo) {
+  top: 0 !important;
+  position: static !important;
 }
 
 .goog-text-highlight {
@@ -123,12 +143,15 @@ html {
 
 @media print {
   html {
-    background: #fff !important;
+    --print-paper: #fff;
+    --print-ink: #000;
+
+    background: var(--print-paper) !important;
     background-image: none !important;
   }
 
   body {
-    color: #000 !important;
+    color: var(--print-ink) !important;
   }
 
   header,
@@ -145,7 +168,7 @@ html {
   h4,
   h5,
   h6 {
-    color: #000 !important;
+    color: var(--print-ink) !important;
     background: transparent !important;
     text-shadow: none !important;
     filter: none !important;
@@ -188,6 +211,6 @@ html {
 
   .tts {
     background: transparent !important;
-    color: #000 !important;
+    color: var(--print-ink) !important;
   }
 }

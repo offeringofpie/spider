@@ -4,6 +4,8 @@ import { isLight } from '../lib/themes';
 import { loadArticle, isUrl } from '../lib/load';
 import TOC from '../components/TOC';
 import ArchiveNotice from '../components/ArchiveNotice';
+import Attempts from '../components/Attempts';
+import Resume from '../components/Resume';
 
 const rtlLanguages = new Set([
   'ar',
@@ -18,7 +20,9 @@ const rtlLanguages = new Set([
 ]);
 
 const direction = (lang: string | null) => {
-  if (!lang) return undefined;
+  if (!lang) {
+    return undefined;
+  }
   return rtlLanguages.has(lang.split('-')[0].toLowerCase()) ? 'rtl' : undefined;
 };
 
@@ -29,29 +33,43 @@ const textSizeClasses: Record<string, string> = {
   'prose-2xl': 'prose-base sm:prose-2xl',
 };
 
-export default function Home() {
+export default function Home(): React.ReactElement | null {
   const [state] = useStore(defaultStore);
   const doc = state.document;
 
   useEffect(() => {
-    if (doc.kind !== 'loaded') return;
+    if (doc.kind !== 'loaded') {
+      return;
+    }
 
     const content = document.getElementById('article-content');
-    if (!content) return;
+    if (!content) {
+      return;
+    }
 
     document.querySelectorAll('#article-content a').forEach((a) => {
-      if (a.getAttribute('href')?.startsWith('#')) return;
+      if (a.getAttribute('href')?.startsWith('#')) {
+        return;
+      }
       a.setAttribute('rel', 'noopener noreferrer');
     });
 
     const handleClick = (e: MouseEvent) => {
-      if (e.defaultPrevented || e.button !== 0) return;
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if (e.defaultPrevented || e.button !== 0) {
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+        return;
+      }
 
       const link = (e.target as Element | null)?.closest?.('a');
       const href = link?.getAttribute('href');
-      if (!href || href.startsWith('#')) return;
-      if (!isUrl(link!.href)) return;
+      if (!href || href.startsWith('#')) {
+        return;
+      }
+      if (!isUrl(link!.href)) {
+        return;
+      }
 
       e.preventDefault();
       loadArticle(link!.href);
@@ -85,6 +103,7 @@ export default function Home() {
               Could not render this article
             </h1>
             <ArchiveNotice message={doc.message} url={doc.url} />
+            <Attempts attempts={doc.attempts} url={doc.url} />
           </article>
         </div>
       );
@@ -114,17 +133,21 @@ export default function Home() {
               dangerouslySetInnerHTML={{ __html: doc.post.content }}
             />
             {doc.paywalled && (
-              <ArchiveNotice
-                message="This article is behind a paywall."
-                url={doc.post.url}
-              />
+              <>
+                <ArchiveNotice
+                  message="This article is behind a paywall."
+                  url={doc.post.url}
+                />
+                <Attempts attempts={doc.attempts} url={doc.post.url} />
+              </>
             )}
           </article>
+          <Resume url={doc.post.url} />
         </div>
       );
 
     default: {
-      const _exhaustive = doc;
+      const _exhaustive: never = doc;
       throw new Error(
         `Unhandled document state: ${JSON.stringify(_exhaustive)}`,
       );

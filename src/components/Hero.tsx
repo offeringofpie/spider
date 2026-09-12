@@ -15,7 +15,9 @@ const readTime = (wordCount: number) => {
 
 const stripSiteSuffix = (title: string, url: string) => {
   const match = title.match(/^(.*?)\s+[-|–—]\s+([^-|–—]+)$/);
-  if (!match) return title;
+  if (!match) {
+    return title;
+  }
 
   const normalise = (s: string) => {
     return s.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -46,7 +48,7 @@ const hostname = (url: string) => {
   }
 };
 
-function Meta({ post }: { post: ParsedPost }) {
+function Meta({ post }: { post: ParsedPost }): React.ReactElement {
   const domain = hostname(post.url);
 
   return (
@@ -84,7 +86,7 @@ function Meta({ post }: { post: ParsedPost }) {
   );
 }
 
-export default function Hero() {
+export default function Hero(): React.ReactElement | null {
   const [state] = useStore(defaultStore);
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -95,7 +97,9 @@ export default function Hero() {
     setImageFailed(false);
   }, [sourceUrl]);
 
-  if (doc.kind !== 'loaded') return null;
+  if (doc.kind !== 'loaded') {
+    return null;
+  }
 
   const { post } = doc;
   const leadImageUrl = imageFailed ? null : doc.leadImageUrl;
@@ -104,7 +108,10 @@ export default function Hero() {
   if (!leadImageUrl) {
     return (
       <div className="relative max-w-4xl mx-auto px-4 pt-10">
-        <h1 className="font-semibold tracking-tight text-3xl md:text-4xl text-base-content mb-4">
+        <h1
+          id="article-title"
+          className="font-semibold tracking-tight text-3xl md:text-4xl text-base-content mb-4"
+        >
           {title}
         </h1>
         <div className="mb-6">
@@ -115,17 +122,10 @@ export default function Hero() {
   }
 
   return (
-    <div className="w-full" style={{ minHeight: '380px' }}>
+    <div className="masthead w-full">
       <div
         className="hero-backdrop inset-0 absolute max-w-full -z-1 bg-cover bg-center"
-        style={{
-          height: '600px',
-          backgroundImage: `url(${leadImageUrl})`,
-          filter: 'blur(12px) brightness(0.3) saturate(1.4)',
-          maskImage: 'linear-gradient(to bottom, black 55%, transparent 90%)',
-          WebkitMaskImage:
-            'linear-gradient(to bottom, black 55%, transparent 90%)',
-        }}
+        style={{ backgroundImage: `url(${leadImageUrl})` }}
       />
 
       <div className="relative max-w-4xl mx-auto px-4 pt-10 pb-4 flex flex-col md:flex-row gap-8 items-start">
@@ -135,16 +135,21 @@ export default function Hero() {
           fetchPriority="high"
           decoding="async"
           onError={() => setImageFailed(true)}
-          className="w-full md:w-1/2 rounded-xl shadow-2xl object-cover shrink-0"
-          style={{ height: '220px' }}
+          className="cover w-full md:w-1/2 rounded-xl shadow-2xl object-cover shrink-0"
         />
 
         <div className="flex-1 text-base-content min-w-0">
-          <h1 className="font-semibold tracking-tight text-2xl md:text-3xl drop-shadow-lg mb-4">
+          <h1
+            id="article-title"
+            className="font-semibold tracking-tight text-2xl md:text-3xl drop-shadow-lg mb-4"
+          >
             {title}
           </h1>
           {(post.dek || post.excerpt) && (
-            <p className="text-base-content/70 text-sm line-clamp-3">
+            <p
+              id="article-dek"
+              className="text-base-content/70 text-sm line-clamp-3"
+            >
               {post.dek || post.excerpt}
             </p>
           )}

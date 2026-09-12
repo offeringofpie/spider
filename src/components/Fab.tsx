@@ -1,43 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
 import { defaultStore, useStore } from '../store/store';
-import { scrollBehavior } from '../lib/motion';
+import * as tts from '../lib/tts';
 import SettingsButton from './SettingsButton';
 
-const blocks = 'h1, h2, h3, h4, h5, h6, p, li, blockquote';
-
-const getReadableBlocks = () => {
-  const container =
-    document.querySelector('article') ||
-    document.querySelector('#article-content') ||
-    document.body;
-  return Array.from(container.querySelectorAll(blocks)).filter((el) => {
-    const hasBlockChildren = el.querySelector(blocks);
-    return !hasBlockChildren && (el.textContent?.trim().length ?? 0) > 0;
-  });
-};
-
-export default function Fab() {
+export default function Fab(): React.ReactElement | null {
   const [isOpen, setIsOpen] = useState(false);
   const [state, setState] = useStore(defaultStore);
   const [copied, setCopied] = useState(false);
   const [isEmbedded, setIsEmbedded] = useState(false);
 
-  const synthRef = useRef<SpeechSynthesis | null>(null);
   const fabRef = useRef<HTMLDivElement | null>(null);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const shouldReadRef = useRef(false);
-  const restartingRef = useRef(false);
 
   useEffect(() => {
-    synthRef.current = window.speechSynthesis;
     setIsEmbedded(document.documentElement.dataset.embedded === 'true');
+    return tts.subscribe((ttsState) => setState({ ttsState }));
   }, []);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      return;
+    }
     const handleClick = (e: MouseEvent) => {
-      if (fabRef.current && !fabRef.current.contains(e.target as Node))
+      if (fabRef.current && !fabRef.current.contains(e.target as Node)) {
         setIsOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
@@ -45,12 +31,19 @@ export default function Fab() {
 
   useEffect(() => {
     const hasOpen = isOpen || state.showSettings || state.showTranslateBar;
-    if (!hasOpen) return;
+    if (!hasOpen) {
+      return;
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      if (isOpen) setIsOpen(false);
-      if (state.showSettings || state.showTranslateBar)
+      if (e.key !== 'Escape') {
+        return;
+      }
+      if (isOpen) {
+        setIsOpen(false);
+      }
+      if (state.showSettings || state.showTranslateBar) {
         setState({ showSettings: false, showTranslateBar: false });
+      }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
@@ -73,156 +66,48 @@ export default function Fab() {
         await navigator.share({ title, url: window.location.href });
         setIsOpen(false);
       } catch (err) {
-        if ((err as Error).name !== 'AbortError') copyToClipboard();
+        if ((err as Error).name !== 'AbortError') {
+          copyToClipboard();
+        }
       }
     } else {
       copyToClipboard();
     }
   };
 
-  const clearHighlights = () => {
-    document.querySelectorAll('.tts').forEach((el) => {
-      el.classList.remove('tts');
-    });
-  };
-
-  const stopSpeech = () => {
-    shouldReadRef.current = false;
-    synthRef.current?.cancel();
-    setState({ ttsState: 'idle' });
-    clearHighlights();
-    utteranceRef.current = null;
-  };
-
   useEffect(() => {
     if (state.document.kind === 'loading' && state.ttsState !== 'idle') {
-      stopSpeech();
+      tts.stop();
     }
   }, [state.document.kind]);
 
   useEffect(() => {
-    return () => {
-      shouldReadRef.current = false;
-      synthRef.current?.cancel();
-    };
-  }, []);
-
-  useEffect(() => {
-    const handler = () => {
-      if (!shouldReadRef.current || !synthRef.current?.speaking) return;
-      restartingRef.current = true;
-      synthRef.current.cancel();
-    };
-    window.addEventListener('tts-settings-change', handler);
-    return () => window.removeEventListener('tts-settings-change', handler);
-  }, []);
-
-  const scrollIntoViewIfNeeded = (el: Element | null) => {
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const isInViewport =
-      rect.top >= 0 &&
-      rect.bottom <=
-        (window.innerHeight || document.documentElement.clientHeight);
-    if (!isInViewport) {
-      el.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
+    if (state.document.kind !== 'loaded') {
+      return;
     }
-  };
+    const { post, leadImageUrl } = state.document;
+    tts.setTrack({
+      title: post.title ?? 'Article',
+      artist: post.author,
+      artwork: leadImageUrl,
+    });
+  }, [state.document]);
+
+  useEffect(() => tts.stop, []);
 
   const toggleSpeech = () => {
-    if (!synthRef.current) return;
-
     switch (state.ttsState) {
-      case 'speaking': {
-        synthRef.current.pause();
-        setState({ ttsState: 'paused' });
-        return;
-      }
-      case 'paused': {
-        synthRef.current.resume();
-        setState({ ttsState: 'speaking' });
-        return;
-      }
+      case 'speaking':
+        return tts.pause();
+      case 'paused':
+        return tts.resume();
       case 'idle':
-        break;
+        return tts.start();
       default: {
         const _exhaustive: never = state.ttsState;
         throw new Error(`Unhandled ttsState: ${_exhaustive}`);
       }
     }
-
-    const initialBlocks = getReadableBlocks();
-    if (initialBlocks.length === 0) return;
-
-    setState({ ttsState: 'speaking' });
-    shouldReadRef.current = true;
-    utteranceRef.current = null;
-
-    let currentBlockIndex = 0;
-
-    const speakNext = () => {
-      if (!shouldReadRef.current) {
-        setState({ ttsState: 'idle' });
-        clearHighlights();
-        return;
-      }
-
-      const liveBlocks = getReadableBlocks();
-
-      if (currentBlockIndex >= liveBlocks.length) {
-        setState({ ttsState: 'idle' });
-        clearHighlights();
-        return;
-      }
-
-      const block = liveBlocks[currentBlockIndex];
-      const utterance = new SpeechSynthesisUtterance(block.textContent ?? '');
-
-      utteranceRef.current = utterance;
-
-      const voiceName = localStorage.getItem('voice');
-      const voices = synthRef.current?.getVoices() ?? [];
-      const selectedVoice = voiceName
-        ? voices.find((v) => v.name === voiceName)
-        : null;
-      if (selectedVoice) utterance.voice = selectedVoice;
-      utterance.rate = parseFloat(localStorage.getItem('rate') || '1');
-      utterance.pitch = parseFloat(localStorage.getItem('pitch') || '1');
-      utterance.volume = parseFloat(localStorage.getItem('volume') || '1');
-
-      clearHighlights();
-      block.classList.add('tts');
-      scrollIntoViewIfNeeded(block);
-
-      utterance.onend = () => {
-        if (restartingRef.current) {
-          restartingRef.current = false;
-          setTimeout(speakNext, 50);
-          return;
-        }
-        currentBlockIndex++;
-        if (shouldReadRef.current) {
-          setTimeout(speakNext, 50);
-        }
-      };
-
-      utterance.onerror = (e) => {
-        if (e.error === 'canceled' && restartingRef.current) {
-          restartingRef.current = false;
-          setTimeout(speakNext, 50);
-        } else if (e.error !== 'canceled') {
-          console.error('TTS Error:', e);
-          currentBlockIndex++;
-          if (shouldReadRef.current) setTimeout(speakNext, 50);
-        } else {
-          clearHighlights();
-        }
-      };
-
-      synthRef.current?.speak(utterance);
-    };
-
-    setTimeout(speakNext, 100);
   };
 
   const toggleTranslateBar = () => {
@@ -230,7 +115,9 @@ export default function Fab() {
     setIsOpen(false);
   };
 
-  if (state.document.kind !== 'loaded') return null;
+  if (state.document.kind !== 'loaded') {
+    return null;
+  }
   const { post } = state.document;
 
   const menuTabIndex = isOpen ? 0 : -1;
@@ -350,7 +237,7 @@ export default function Fab() {
             )}
           </button>
           <button
-            onClick={stopSpeech}
+            onClick={tts.stop}
             aria-label="Stop"
             className="btn btn-circle btn-sm bg-error/10 text-error h-11 w-11 flex items-center justify-center ml-1"
           >

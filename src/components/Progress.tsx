@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { defaultStore, useStore } from '../store/store';
 
-export default function Progress() {
+export default function Progress(): React.ReactElement | null {
   const [state] = useStore(defaultStore);
   const [percent, setPercent] = useState(0);
   const frame = useRef(0);
@@ -20,7 +20,9 @@ export default function Progress() {
     };
 
     const handleScroll = () => {
-      if (frame.current) return;
+      if (frame.current) {
+        return;
+      }
       frame.current = requestAnimationFrame(measure);
     };
 
@@ -31,11 +33,15 @@ export default function Progress() {
     return () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleScroll);
-      if (frame.current) cancelAnimationFrame(frame.current);
+      if (frame.current) {
+        cancelAnimationFrame(frame.current);
+      }
     };
   }, [state.document]);
 
-  if (state.document.kind !== 'loaded') return null;
+  if (state.document.kind !== 'loaded') {
+    return null;
+  }
 
   return (
     <div
@@ -44,7 +50,7 @@ export default function Progress() {
       aria-valuenow={Math.round(percent)}
       aria-valuemin={0}
       aria-valuemax={100}
-      className="fixed top-0 left-0 z-50 w-full h-1 print:hidden"
+      className="fixed top-0 left-0 z-50 w-full h-1 backdrop-blur-sm print:hidden"
     >
       <hr
         className="drop-shadow-xl bg-linear-to-r from-secondary/50 to-secondary absolute h-full left-0 top-0 border-none"
