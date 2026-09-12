@@ -30,6 +30,7 @@ import {
   llmsUrls,
   markdownUrls,
 } from '../../lib/alternates';
+import type { ParseAttempt } from '../../lib/types';
 
 export const prerender = false;
 
@@ -58,6 +59,7 @@ const budget = 9000;
 const defaultTimeout = 3500;
 const confidentWords = 200;
 const recoverWords = 150;
+const minWords = 25;
 const truncationRatio = 1.5;
 const archivePending = 'Archive requested, snapshot not ready yet';
 
@@ -80,41 +82,43 @@ const browserHeaders = {
   Referer: 'https://www.google.com/',
 };
 
-interface Strategy {
-  name: string;
-  matches: (url: URL) => boolean;
-  headers: Record<string, string>;
-  rewrite?: (url: URL) => Promise<string> | string;
-  timeout?: number;
-}
+type Strategy = {
+  readonly name: string;
+  readonly matches: (url: URL) => boolean;
+  readonly headers: Record<string, string>;
+  readonly rewrite?: (url: URL) => Promise<string> | string;
+  readonly timeout?: number;
+};
 
-interface StrategySuccess {
+type ParsedArticle = Awaited<ReturnType<typeof Parser.parse>>;
+
+type StrategySuccess = {
   kind: 'success';
-  parsed: Awaited<ReturnType<typeof Parser.parse>>;
+  parsed: ParsedArticle;
   fetchedUrl: string;
   strategyName: string;
   contentLength: number;
   paywalled: boolean;
   confident: boolean;
-}
+};
 
-interface StrategyPartial {
+type StrategyPartial = {
   kind: 'partial';
-  parsed: Awaited<ReturnType<typeof Parser.parse>>;
+  parsed: ParsedArticle;
   fetchedUrl: string;
   strategyName: string;
   contentLength: number;
-}
+};
 
-interface StrategyFailure {
+type StrategyFailure = {
   kind: 'failure';
   strategyName: string;
   error: string;
-}
+};
 
 type StrategyAttempt = StrategySuccess | StrategyPartial | StrategyFailure;
 
-const strategies: Strategy[] = [
+const strategies: readonly Strategy[] = [
   {
     name: 'googlebot',
     matches: (url) => {
@@ -152,15 +156,18 @@ const strategies: Strategy[] = [
         `https://archive.org/wayback/available?url=${encodeURIComponent(url.href)}`,
         { signal: AbortSignal.timeout(2000) },
       );
-      if (!response.ok)
+      if (!response.ok) {
         throw new Error(`Wayback check failed: HTTP ${response.status}`);
+      }
       const data = (await response.json()) as {
         archived_snapshots?: {
           closest?: { available?: boolean; url?: string };
         };
       };
       const closest = data?.archived_snapshots?.closest;
-      if (!closest?.available) throw new Error('No Wayback snapshot available');
+      if (!closest?.available) {
+        throw new Error('No Wayback snapshot available');
+      }
       return (closest.url as string).replace(/\/web\/(\d+)\//, '/web/$1if_/');
     },
     timeout: 6000,
@@ -183,14 +190,22 @@ async function fetchWithRetry(
 ): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     const response = await fetch(fetchUrl, options);
-    if (response.status !== 429) return response;
-    if (i === retries - 1) break;
+    if (response.status !== 429) {
+      return response;
+    }
+    if (i === retries - 1) {
+      break;
+    }
     const retryAfter = Number(response.headers.get('Retry-After'));
     const wanted =
-      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : backoff;
+      Number.isFinite(retryAfter) && retryAfter > 0
+        ? retryAfter * 1000
+        : backoff;
     const budgetLeft = remaining ? remaining() - 500 : wanted;
     const delay = Math.min(wanted, Math.max(budgetLeft, 0), 3000);
-    if (delay <= 0) break;
+    if (delay <= 0) {
+      break;
+    }
     console.warn(`429 received, retrying in ${delay}ms...`);
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
@@ -205,13 +220,16 @@ async function parse(sourceUrl: string, html: string) {
     contentType: 'html',
     fetchAllPages: false,
   });
-  if (parsed.content)
+  if (parsed.content) {
     parsed.content = lazyLoadImages(restoreMediaEmbeds(parsed.content));
+  }
   return parsed;
 }
 
 function withLang<T>(parsed: T, lang: string | null): T {
-  if (parsed && lang) (parsed as { lang?: string | null }).lang ??= lang;
+  if (parsed && lang) {
+    (parsed as { lang?: string | null }).lang ??= lang;
+  }
   return parsed;
 }
 
@@ -240,9 +258,13 @@ async function tryAmp(
   remaining: () => number,
 ) {
   const ampHref = ampUrl(html, url);
-  if (!ampHref) return null;
+  if (!ampHref) {
+    return null;
+  }
   const budgetLeft = remaining() - 500;
-  if (budgetLeft < 1000) return null;
+  if (budgetLeft < 1000) {
+    return null;
+  }
   const timeout = Math.min(strategy.timeout ?? defaultTimeout, budgetLeft);
   const response = await fetchWithRetry(
     ampHref,
@@ -253,12 +275,22 @@ async function tryAmp(
     },
     remaining,
   );
-  if (!response.ok) return null;
+  if (!response.ok) {
+    return null;
+  }
   const ampText = await response.text();
   const ampParsed = await parse(ampHref, ampText);
-  if (!ampParsed.content?.trim()) return null;
-  if (paywall(ampText, countWords(ampParsed.content))) return null;
-  return { parsed: ampParsed, fetchedUrl: ampHref, contentLength: ampText.length };
+  if (!ampParsed.content?.trim()) {
+    return null;
+  }
+  if (paywall(ampText, countWords(ampParsed.content))) {
+    return null;
+  }
+  return {
+    parsed: ampParsed,
+    fetchedUrl: ampHref,
+    contentLength: ampText.length,
+  };
 }
 
 async function tryStrategy(
@@ -268,7 +300,9 @@ async function tryStrategy(
 ): Promise<StrategyAttempt> {
   try {
     const budgetLeft = remaining() - 500;
-    if (budgetLeft < 1000) throw new Error('No time left for this strategy');
+    if (budgetLeft < 1000) {
+      throw new Error('No time left for this strategy');
+    }
     const fetchUrl = (await strategy.rewrite?.(url)) ?? url.href;
     const timeout = Math.min(strategy.timeout ?? defaultTimeout, budgetLeft);
     const response = await fetchWithRetry(
@@ -280,14 +314,17 @@ async function tryStrategy(
       },
       remaining,
     );
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
     const text = await response.text();
     const contentType = response.headers.get('content-type') ?? '';
 
     if (isMarkdown(url, contentType)) {
       const parsed = parseMarkdown(text, url.href);
-      if (!parsed.content?.trim())
+      if (!parsed.content?.trim()) {
         throw new Error('Empty content after parsing');
+      }
       return success(parsed, fetchUrl, strategy.name, text.length, true);
     }
 
@@ -310,19 +347,23 @@ async function tryStrategy(
       structuredWords >= mercuryWords * truncationRatio &&
       (structuredWords >= confidentWords || !paywallDetected)
     ) {
-      if (!structured.title) structured.title = parsed.title ?? titleFromHtml(text);
-      if (!structured.dek) structured.dek = metaDescription(text);
+      if (!structured.title) {
+        structured.title = parsed.title ?? titleFromHtml(text);
+      }
+      if (!structured.dek) {
+        structured.dek = metaDescription(text);
+      }
       return success(structured, fetchUrl, strategy.name, text.length, true);
     }
 
-    if (mercuryContent && !paywallDetected) {
+    if (mercuryContent && mercuryWords >= minWords && !paywallDetected) {
       const confident = mercuryWords >= confidentWords;
       return success(parsed, fetchUrl, strategy.name, text.length, confident);
     }
 
     if (paywallDetected) {
       const amp = await tryAmp(url, text, strategy, remaining);
-      if (amp)
+      if (amp) {
         return success(
           amp.parsed,
           amp.fetchedUrl,
@@ -330,6 +371,7 @@ async function tryStrategy(
           amp.contentLength,
           true,
         );
+      }
     }
 
     if (!mercuryContent || mercuryWords < confidentWords) {
@@ -349,15 +391,21 @@ async function tryStrategy(
     if (rawMd) {
       const mdParsed = withLang(parseMarkdown(rawMd, url.href), lang);
       if (mdParsed.content?.trim()) {
-        if (!mdParsed.title) mdParsed.title = titleFromHtml(text);
+        if (!mdParsed.title) {
+          mdParsed.title = titleFromHtml(text);
+        }
         return success(mdParsed, fetchUrl, strategy.name, text.length, true);
       }
     }
 
     if (paywallDetected) {
       if (structured && structuredWords > mercuryWords) {
-        if (!structured.title) structured.title = parsed.title ?? titleFromHtml(text);
-        if (!structured.dek) structured.dek = metaDescription(text);
+        if (!structured.title) {
+          structured.title = parsed.title ?? titleFromHtml(text);
+        }
+        if (!structured.dek) {
+          structured.dek = metaDescription(text);
+        }
         return {
           kind: 'partial',
           parsed: structured,
@@ -367,9 +415,13 @@ async function tryStrategy(
         };
       }
       if (mercuryContent) {
-        if (!parsed.dek) parsed.dek = metaDescription(text);
+        if (!parsed.dek) {
+          parsed.dek = metaDescription(text);
+        }
         const teaser = paywallTeaser(text);
-        if (teaser) parsed.content = teaser;
+        if (teaser) {
+          parsed.content = teaser;
+        }
         return {
           kind: 'partial',
           parsed,
@@ -392,11 +444,11 @@ async function tryStrategy(
   }
 }
 
-interface Fetched {
-  url: string;
-  text: string;
-  contentType: string;
-}
+type Fetched = {
+  readonly url: string;
+  readonly text: string;
+  readonly contentType: string;
+};
 
 async function fetchGroup(
   urls: string[],
@@ -411,7 +463,9 @@ async function fetchGroup(
           signal: AbortSignal.timeout(timeout),
           redirect: 'follow',
         });
-        if (!response.ok) return null;
+        if (!response.ok) {
+          return null;
+        }
         return {
           url: fetchUrl,
           text: await response.text(),
@@ -463,9 +517,13 @@ async function tryMarkdownAlternate(url: URL, timeout: number) {
     const looksMarkdown =
       fetched.contentType.includes('text/markdown') ||
       fetched.url.endsWith('.md');
-    if (!looksMarkdown || fetched.text.trimStart().startsWith('<')) continue;
+    if (!looksMarkdown || fetched.text.trimStart().startsWith('<')) {
+      continue;
+    }
     const parsed = parseAlternate(fetched.text, url.href);
-    if (!parsed.content?.trim()) continue;
+    if (!parsed.content?.trim()) {
+      continue;
+    }
     return alternateSuccess(parsed, fetched.url, fetched.text.length);
   }
   return null;
@@ -476,7 +534,9 @@ async function tryFeedAlternate(url: URL, timeout: number) {
 
   for (const fetched of results) {
     const article = articleFromFeed(fetched.text, url.href);
-    if (!article) continue;
+    if (!article) {
+      continue;
+    }
     const content = absolutize(article.content, url.href);
     const parsed = articleResult(content, url.href, {
       title: article.title,
@@ -493,9 +553,13 @@ async function tryLlmsAlternate(url: URL, timeout: number) {
 
   for (const fetched of results) {
     const article = articleFromLlms(fetched.text, url.href);
-    if (!article) continue;
+    if (!article) {
+      continue;
+    }
     const parsed = parseAlternate(article.body, url.href);
-    if (!parsed.content?.trim()) continue;
+    if (!parsed.content?.trim()) {
+      continue;
+    }
     parsed.title = article.title;
     return alternateSuccess(parsed, fetched.url, fetched.text.length);
   }
@@ -514,7 +578,9 @@ async function tryAlternates(
       tryLlmsAlternate(url, timeout),
     ]);
     const found = markdown ?? feed ?? llms;
-    if (found) return found;
+    if (found) {
+      return found;
+    }
   }
 
   return {
@@ -543,10 +609,14 @@ async function trySavePage(
       signal: AbortSignal.timeout(timeout),
       redirect: 'follow',
     });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
     const text = await response.text();
     const parsed = await parse(url.href, text);
-    if (!parsed.content?.trim()) throw new Error(archivePending);
+    if (!parsed.content?.trim()) {
+      throw new Error(archivePending);
+    }
     return {
       kind: 'success',
       parsed,
@@ -572,8 +642,12 @@ function runStep(
   url: URL,
   remaining: () => number,
 ): Promise<StrategyAttempt> {
-  if (name === 'alternates') return tryAlternates(url, remaining);
-  if (name === 'savepage') return trySavePage(url, remaining);
+  if (name === 'alternates') {
+    return tryAlternates(url, remaining);
+  }
+  if (name === 'savepage') {
+    return trySavePage(url, remaining);
+  }
   const strategy = strategies.find((s) => s.name === name) ?? fallback;
   return tryStrategy(url, strategy, remaining);
 }
@@ -634,10 +708,30 @@ export async function GET({ request }: { request: Request }) {
   let archiveRequested = false;
   let notFound = false;
 
-  for (const step of steps) {
-    if (step === 'savepage' && notFound) break;
-    if (remaining() < 500) break;
-    if (bestPartial && directSteps.has(step)) continue;
+  const attempts: ParseAttempt[] = [];
+  const skipRest = (from: number, reason: string) => {
+    for (const step of steps.slice(from)) {
+      attempts.push({ step, status: 'skipped', reason });
+    }
+  };
+
+  for (const [position, step] of steps.entries()) {
+    if (step === 'savepage' && notFound) {
+      skipRest(position, 'Source returned 404 or 410');
+      break;
+    }
+    if (remaining() < 500) {
+      skipRest(position, 'Ran out of time');
+      break;
+    }
+    if (bestPartial && directSteps.has(step)) {
+      attempts.push({
+        step,
+        status: 'skipped',
+        reason: 'A paywalled copy was already recovered',
+      });
+      continue;
+    }
     const result = await runStep(step, url, remaining);
     if (result.kind === 'success') {
       return new Response(
@@ -658,14 +752,25 @@ export async function GET({ request }: { request: Request }) {
       );
     }
     if (result.kind === 'partial') {
-      if (!bestPartial) bestPartial = result;
+      attempts.push({ step, status: 'partial' });
+      if (!bestPartial) {
+        bestPartial = result;
+      }
     } else {
-      if (result.error === 'Bot challenge detected')
+      attempts.push({ step, status: 'failure', error: result.error });
+      if (result.error === 'Bot challenge detected') {
         botChallengeDetected = true;
-      if (result.error === archivePending) archiveRequested = true;
-      if (/^HTTP (404|410)$/.test(result.error)) notFound = true;
+      }
+      if (result.error === archivePending) {
+        archiveRequested = true;
+      }
+      if (/^HTTP (404|410)$/.test(result.error)) {
+        notFound = true;
+      }
       console.warn(`Strategy '${result.strategyName}' failed:`, result.error);
-      if (!firstFailure) firstFailure = result;
+      if (!firstFailure) {
+        firstFailure = result;
+      }
     }
   }
 
@@ -679,6 +784,7 @@ export async function GET({ request }: { request: Request }) {
           strategy: bestPartial.strategyName,
           contentLength: bestPartial.contentLength,
           paywalled: true,
+          attempts,
         },
       }),
       { status: 200, headers: partialCacheHeaders },
@@ -700,6 +806,7 @@ export async function GET({ request }: { request: Request }) {
       error: firstFailure?.error ?? 'All strategies failed.',
       url: url.href,
       suggestion,
+      attempts,
       archive_links: [
         {
           label: 'Wayback Machine snapshots',

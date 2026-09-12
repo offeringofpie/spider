@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { ParseAttempt } from '../lib/types';
 
 class Store<T extends object> {
   private state: T;
@@ -13,16 +14,22 @@ class Store<T extends object> {
   }
 
   private readPersisted(): Partial<T> {
-    if (typeof window === 'undefined' || !window.localStorage) return {};
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return {};
+    }
 
     try {
       const stored = localStorage.getItem(this.key);
-      if (!stored) return {};
+      if (!stored) {
+        return {};
+      }
 
       const parsed = JSON.parse(stored) as Partial<T>;
       const subset: Partial<T> = {};
       for (const key of this.persist) {
-        if (key in parsed) subset[key] = parsed[key];
+        if (key in parsed) {
+          subset[key] = parsed[key];
+        }
       }
       return subset;
     } catch {
@@ -31,7 +38,9 @@ class Store<T extends object> {
   }
 
   private saveState() {
-    if (typeof window === 'undefined' || !window.localStorage) return;
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
 
     try {
       const subset: Partial<T> = {};
@@ -42,83 +51,75 @@ class Store<T extends object> {
     }
   }
 
-  // Get current state
   getState(): T {
     return this.state;
   }
 
-  // Update state, save to localStorage, and notify subscribers
   setState(newState: Partial<T>) {
     this.state = { ...this.state, ...newState };
     this.saveState();
     this.notifySubscribers();
   }
 
-  // Add a subscriber to be notified of state changes
   subscribe(callback: (state: T) => void) {
     this.subscribers.push(callback);
-    // Return an unsubscribe function
     return () => {
       this.subscribers = this.subscribers.filter((cb) => cb !== callback);
     };
   }
 
-  // Notify all subscribers of state change
   private notifySubscribers() {
     this.subscribers.forEach((callback) => callback(this.state));
   }
 }
 
-// Custom React hook to use the Store in components
 function useStore<T extends object>(store: Store<T>) {
   const [state, setState] = useState(store.getState());
 
   useEffect(() => {
-    // Subscribe to store changes and update local state
     return store.subscribe((newState) => setState(newState));
   }, [store]);
 
-  // Return current state and setState function
   return [state, store.setState.bind(store)] as const;
 }
 
-interface ParsedPost {
-  title: string | null;
-  content: string;
-  url: string;
-  author: string | null;
-  word_count: number | null;
-  date_published: string | null;
-  lead_image_url: string | null;
-  dek: string | null;
-  excerpt: string | null;
-  lang: string | null;
-}
+type ParsedPost = {
+  readonly title: string | null;
+  readonly content: string;
+  readonly url: string;
+  readonly author: string | null;
+  readonly word_count: number | null;
+  readonly date_published: string | null;
+  readonly lead_image_url: string | null;
+  readonly dek: string | null;
+  readonly excerpt: string | null;
+  readonly lang: string | null;
+};
 
-interface IdleDoc {
-  kind: 'idle';
-}
-interface LoadingDoc {
-  kind: 'loading';
-}
-interface LoadedDoc {
+type IdleDoc = { kind: 'idle' };
+
+type LoadingDoc = { kind: 'loading' };
+
+type LoadedDoc = {
   kind: 'loaded';
   post: ParsedPost;
   leadImageUrl: string | null;
   paywalled: boolean;
-}
-interface ErrorDoc {
+  attempts: readonly ParseAttempt[];
+};
+
+type ErrorDoc = {
   kind: 'error';
   message: string;
   url: string;
-}
+  attempts: readonly ParseAttempt[];
+};
 
 type DocumentState = IdleDoc | LoadingDoc | LoadedDoc | ErrorDoc;
 
 type TtsState = 'idle' | 'speaking' | 'paused';
 
-// Define the shape of the default state
-interface DefaultState {
+type DefaultState = {
   theme: string;
   font: string;
   document: DocumentState;
@@ -128,9 +129,8 @@ interface DefaultState {
   showSettings: boolean;
   textSize: string;
   lineHeight: string;
-}
+};
 
-// Create a default store instance
 const defaultStore = new Store<DefaultState>(
   {
     theme: 'abyss',
