@@ -1,16 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { defaultStore, useStore } from '../store/store';
-import { loadArticle, currentQuery, urlFromShare } from '../lib/load';
+import {
+  loadArticle,
+  adoptPayload,
+  currentQuery,
+  isUrl,
+  urlFromShare,
+} from '../lib/load';
 import { scrollBehavior } from '../lib/motion';
 import SettingsButton from './SettingsButton';
+
+const speculateDelay = 500;
 
 export default function Header() {
   const [state] = useStore(defaultStore);
   const [isEmbedded, setIsEmbedded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const timer = useRef(0);
 
   useEffect(() => {
     setIsEmbedded(document.documentElement.dataset.embedded === 'true');
+
+    if (adoptPayload()) return;
 
     const shared = urlFromShare(new URLSearchParams(window.location.search));
     if (shared) loadArticle(shared, { history: 'replace' });
@@ -61,10 +72,25 @@ export default function Header() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    return () => window.clearTimeout(timer.current);
+  }, []);
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    window.clearTimeout(timer.current);
     const url = e.currentTarget.querySelector<HTMLInputElement>('#url')!.value;
     loadArticle(url);
+  }
+
+  function speculate() {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => {
+      const url = inputRef.current?.value.trim() ?? '';
+      if (isUrl(url) && url !== currentQuery()) {
+        loadArticle(url, { mode: 'speculative', history: 'none' });
+      }
+    }, speculateDelay);
   }
 
   if (isEmbedded) {
@@ -98,6 +124,8 @@ export default function Header() {
               type="text"
               id="url"
               ref={inputRef}
+              onPaste={speculate}
+              onBlur={speculate}
               className="input input-accent bg-base-300 border-2 border-r-0 border-primary placeholder-primary/50 text-primary text-sm rounded-none rounded-bl-lg block w-full pl-10 p-3 ease-linear h-full"
               placeholder="Paste a URL to read"
               required

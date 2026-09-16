@@ -1,10 +1,26 @@
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
 import { isLight } from '../lib/themes';
 import { loadArticle, isUrl } from '../lib/load';
 import TOC from '../components/TOC';
 import ArchiveNotice from '../components/ArchiveNotice';
-import Resume from '../components/Resume';
+
+const stepLabels = {
+  regular: 'Fetching the article',
+  googlebot: 'Trying as Googlebot',
+  bingbot: 'Trying as Bingbot',
+  'regular+referrer': 'Retrying with a social referrer',
+  alternates: 'Looking for feeds and Markdown',
+  wayback: 'Checking the Wayback Machine',
+  savepage: 'Requesting an archive',
+} as const;
+
+const stepLabel = (step: string | null): string => {
+  if (!step) {
+    return 'Loading...';
+  }
+  return stepLabels[step as keyof typeof stepLabels] ?? 'Loading...';
+};
 
 const rtlLanguages = new Set([
   'ar',
@@ -35,6 +51,12 @@ const textSizeClasses: Record<string, string> = {
 export default function Home(): React.ReactElement | null {
   const [state] = useStore(defaultStore);
   const doc = state.document;
+
+  useLayoutEffect(() => {
+    if (doc.kind === 'loaded') {
+      document.getElementById('ssr-article')?.remove();
+    }
+  }, [doc.kind]);
 
   useEffect(() => {
     if (doc.kind !== 'loaded') {
@@ -90,7 +112,7 @@ export default function Home(): React.ReactElement | null {
           className="w-full mx-auto max-w-4xl flex flex-col justify-center items-center gap-6 py-24 text-base-content"
         >
           <span className="loading loading-spinner loading-xl text-primary"></span>
-          <span>Loading...</span>
+          <span>{stepLabel(doc.step)}</span>
         </div>
       );
 
@@ -130,14 +152,13 @@ export default function Home(): React.ReactElement | null {
                 prose-a:underline prose-a:underline-offset-2`}
               dangerouslySetInnerHTML={{ __html: doc.post.content }}
             />
-            {doc.paywalled && (
+            {doc.paywalled && doc.stage === 'final' && (
               <ArchiveNotice
                 message="This article is behind a paywall."
                 url={doc.post.url}
               />
             )}
           </article>
-          <Resume url={doc.post.url} />
         </div>
       );
 

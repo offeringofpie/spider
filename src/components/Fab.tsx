@@ -115,7 +115,7 @@ export default function Fab(): React.ReactElement | null {
     setIsOpen(false);
   };
 
-  if (state.document.kind !== 'loaded') {
+  if (state.document.kind !== 'loaded' || state.document.stage !== 'final') {
     return null;
   }
   const { post } = state.document;

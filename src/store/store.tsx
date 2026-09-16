@@ -85,13 +85,14 @@ function useStore<T extends object>(store: Store<T>) {
 
 type IdleDoc = { kind: 'idle' };
 
-type LoadingDoc = { kind: 'loading' };
+type LoadingDoc = { kind: 'loading'; url: string; step: string | null };
 
 type LoadedDoc = {
   kind: 'loaded';
   post: ParsedPost;
   leadImageUrl: string | null;
   paywalled: boolean;
+  stage: 'draft' | 'final';
 };
 
 type ErrorDoc = {
@@ -133,4 +134,4 @@ const defaultStore = new Store<DefaultState>(
 );
 
 export { defaultStore, useStore };
-export type { ParsedPost, DocumentState, DefaultState };
+export type { ParsedPost, DocumentState, LoadedDoc, DefaultState };

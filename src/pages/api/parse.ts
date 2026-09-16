@@ -1,5 +1,6 @@
 import { drain, runParse } from '../../lib/pipeline';
-import type { ParseResult } from '../../lib/types';
+import type { ParseOptions } from '../../lib/pipeline';
+import type { ParseEvent, ParseResult } from '../../lib/types';
 
 export const prerender = false;
 
@@ -60,6 +61,64 @@ function target(urlString: string | null): URL | Response {
   return url;
 }
 
+const streamHeaders = {
+  ...corsHeaders,
+  'Content-Type': 'application/x-ndjson',
+  'Cache-Control': 'no-store',
+};
+
+function terminal(result: ParseResult): ParseEvent[] {
+  if (result.kind === 'failure') {
+    return [
+      {
+        type: 'failed',
+        error: result.error,
+        suggestion: result.suggestion,
+        url: result.url,
+        attempts: result.attempts,
+      },
+    ];
+  }
+  return [
+    { type: 'article', stage: 'final', post: result.post, meta: result.meta },
+    { type: 'done', attempts: result.attempts },
+  ];
+}
+
+function stream(url: URL, options: ParseOptions): Response {
+  const encoder = new TextEncoder();
+  const body = new ReadableStream({
+    async start(controller) {
+      const write = (event: ParseEvent) => {
+        controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      };
+      try {
+        const events = runParse(url, options);
+        let next = await events.next();
+        while (!next.done) {
+          write(next.value);
+          next = await events.next();
+        }
+        for (const event of terminal(next.value)) {
+          write(event);
+        }
+      } catch (error) {
+        write({
+          type: 'failed',
+          error: (error as Error).message,
+          suggestion: 'The parser crashed. Try again or use an archive link.',
+          url: url.href,
+          attempts: [],
+        });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(body, { status: 200, headers: streamHeaders });
+}
+
 function serialise(result: ParseResult): Response {
   if (result.kind === 'article') {
     return new Response(
@@ -105,9 +164,12 @@ export async function GET({ request }: { request: Request }) {
 
   const strategy = searchParams.get('strategy') ?? 'auto';
   const freshness = searchParams.get('fresh') === '1' ? 'fresh' : 'cached';
-  return serialise(
-    await drain(runParse(url, { strategy, budget, freshness })),
-  );
+  const options: ParseOptions = { strategy, budget, freshness };
+
+  if (searchParams.get('stream') === '1') {
+    return stream(url, options);
+  }
+  return serialise(await drain(runParse(url, options)));
 }
 
 export async function OPTIONS() {

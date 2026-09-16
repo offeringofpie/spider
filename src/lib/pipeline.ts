@@ -5,12 +5,15 @@ import {
   fetchDocument,
   fetchGroup,
   fetchWithRetry,
+  referrers,
   strategies,
+  withReferrer,
 } from './fetcher';
-import type { Strategy } from './fetcher';
+import type { FetchOutcome, Strategy } from './fetcher';
 import { extractArticle, parseWithMercury } from './extractors';
 import type { FetchAmp, ParsedArticle } from './extractors';
-import { countWords } from './extract';
+import { countWords, feedLinks, linkTags, markdownLinks } from './extract';
+import type { LinkTag } from './extract';
 import { articleResult, parseMarkdown } from './markdown';
 import {
   absolutize,
@@ -24,9 +27,21 @@ import {
 } from './alternates';
 import { readResult, writeLog, writeResult } from './cache';
 import type { AttemptLog } from './cache';
-import type { ParseAttempt, ParseEvent, ParseResult } from './types';
+import type {
+  ParseAttempt,
+  ParseEvent,
+  ParseMeta,
+  ParseResult,
+} from './types';
 
 const archivePending = 'Archive requested, snapshot not ready yet';
+const referrerStep = 'regular+referrer';
+
+type StepContext = {
+  prefetch: Map<string, Promise<FetchOutcome>>;
+  links: readonly LinkTag[];
+  referrer: string | null;
+};
 
 type StrategySuccess = {
   kind: 'success';
@@ -87,14 +102,21 @@ async function* tryStrategy(
   url: URL,
   strategy: Strategy,
   remaining: () => number,
+  context: StepContext,
 ): AsyncGenerator<ParseEvent, StrategyAttempt> {
-  const fetched = await fetchDocument(url, strategy, remaining);
+  const pending = context.prefetch.get(strategy.name);
+  context.prefetch.delete(strategy.name);
+  const fetched = await (pending ?? fetchDocument(url, strategy, remaining));
   if (fetched.kind === 'failed') {
     return {
       kind: 'failure',
       strategyName: strategy.name,
       error: fetched.error,
     };
+  }
+
+  if (context.links.length === 0) {
+    context.links = linkTags(fetched.html, url);
   }
 
   try {
@@ -170,9 +192,13 @@ function parseAlternate(text: string, sourceUrl: string) {
   return parsed;
 }
 
-async function tryMarkdownAlternate(url: URL, timeout: number) {
+async function tryMarkdownAlternate(
+  url: URL,
+  timeout: number,
+  discovered: string[],
+) {
   const headers = { ...browserHeaders, Accept: 'text/markdown, text/plain' };
-  const candidates = [url.href, ...markdownUrls(url)];
+  const candidates = [url.href, ...discovered, ...markdownUrls(url)];
   const results = await fetchGroup(candidates, headers, timeout);
 
   for (const fetched of results) {
@@ -191,8 +217,13 @@ async function tryMarkdownAlternate(url: URL, timeout: number) {
   return null;
 }
 
-async function tryFeedAlternate(url: URL, timeout: number) {
-  const results = await fetchGroup(feedUrls(url), browserHeaders, timeout);
+async function tryFeedAlternate(
+  url: URL,
+  timeout: number,
+  discovered: string[],
+) {
+  const candidates = discovered.length > 0 ? discovered : feedUrls(url);
+  const results = await fetchGroup(candidates, browserHeaders, timeout);
 
   for (const fetched of results) {
     const article = articleFromFeed(fetched.text, url.href);
@@ -231,12 +262,13 @@ async function tryLlmsAlternate(url: URL, timeout: number) {
 async function tryAlternates(
   url: URL,
   remaining: () => number,
+  links: readonly LinkTag[],
 ): Promise<StrategyAttempt> {
   const timeout = alternateTimeout(remaining());
   if (timeout >= 800) {
     const [markdown, feed, llms] = await Promise.all([
-      tryMarkdownAlternate(url, timeout),
-      tryFeedAlternate(url, timeout),
+      tryMarkdownAlternate(url, timeout, markdownLinks(links)),
+      tryFeedAlternate(url, timeout, feedLinks(links)),
       tryLlmsAlternate(url, timeout),
     ]);
     const found = markdown ?? feed ?? llms;
@@ -303,15 +335,23 @@ async function* runStep(
   name: string,
   url: URL,
   remaining: () => number,
+  context: StepContext,
 ): AsyncGenerator<ParseEvent, StrategyAttempt> {
   if (name === 'alternates') {
-    return await tryAlternates(url, remaining);
+    return await tryAlternates(url, remaining, context.links);
   }
   if (name === 'savepage') {
     return await trySavePage(url, remaining);
   }
+  if (name === referrerStep) {
+    const retry = {
+      ...withReferrer(fallback, context.referrer ?? referrers.paywall),
+      name: referrerStep,
+    };
+    return yield* tryStrategy(url, retry, remaining, context);
+  }
   const strategy = strategies.find((s) => s.name === name) ?? fallback;
-  return yield* tryStrategy(url, strategy, remaining);
+  return yield* tryStrategy(url, strategy, remaining, context);
 }
 
 function* record(
@@ -337,12 +377,32 @@ function plan(url: URL, strategy: string) {
   if (strategy !== 'auto') {
     return { steps: [strategy], directSteps: new Set<string>() };
   }
-  const direct = strategies.filter((s) => s.name !== 'wayback');
+  const direct = strategies.filter((s) => s.auto);
   const primary = direct.find((s) => s.matches(url)) ?? fallback;
   const ordered = [primary, ...direct.filter((s) => s !== primary)];
   return {
-    steps: [...ordered.map((s) => s.name), 'alternates', 'wayback'],
+    steps: [
+      ...ordered.map((s) => s.name),
+      referrerStep,
+      'alternates',
+      'wayback',
+    ],
     directSteps: new Set(ordered.map((s) => s.name)),
+  };
+}
+
+function metaOf(
+  url: URL,
+  attempt: StrategySuccess | StrategyPartial,
+  paywalled: boolean,
+): ParseMeta {
+  return {
+    originalUrl: url.href,
+    fetchedUrl: attempt.fetchedUrl,
+    strategy: attempt.strategyName,
+    contentLength: attempt.contentLength,
+    paywalled,
+    source: 'live',
   };
 }
 
@@ -396,6 +456,18 @@ async function* runSteps(
   const remaining = () => options.budget - (Date.now() - started);
   const { steps, directSteps } = plan(url, options.strategy);
 
+  const context: StepContext = {
+    prefetch: new Map(),
+    links: [],
+    referrer: null,
+  };
+  for (const name of directSteps) {
+    const strategy = strategies.find((s) => s.name === name);
+    if (strategy) {
+      context.prefetch.set(name, fetchDocument(url, strategy, remaining));
+    }
+  }
+
   let bestPartial: StrategyPartial | null = null;
   let firstFailure: StrategyFailure | null = null;
   let botChallengeDetected = false;
@@ -421,10 +493,23 @@ async function* runSteps(
       });
       continue;
     }
+    if (step === referrerStep) {
+      if (!botChallengeDetected && !bestPartial) {
+        yield* record(attempts, {
+          step,
+          status: 'skipped',
+          reason: 'No paywall or bot challenge to work around',
+        });
+        continue;
+      }
+      context.referrer = botChallengeDetected
+        ? referrers.challenge
+        : referrers.paywall;
+    }
 
     yield { type: 'step', step, at: Date.now() - started };
     const stepStarted = Date.now();
-    const result = yield* runStep(step, url, remaining);
+    const result = yield* runStep(step, url, remaining, context);
     const ms = Date.now() - stepStarted;
 
     if (result.kind === 'success') {
@@ -437,14 +522,7 @@ async function* runSteps(
       return {
         kind: 'article',
         post: result.parsed,
-        meta: {
-          originalUrl: url.href,
-          fetchedUrl: result.fetchedUrl,
-          strategy: result.strategyName,
-          contentLength: result.contentLength,
-          paywalled: result.paywalled,
-          source: 'live',
-        },
+        meta: metaOf(url, result, result.paywalled),
         attempts,
         confident: result.confident,
       };
@@ -454,6 +532,12 @@ async function* runSteps(
       yield* record(attempts, { step, status: 'partial', ms });
       if (!bestPartial) {
         bestPartial = result;
+        yield {
+          type: 'article',
+          stage: 'draft',
+          post: result.parsed,
+          meta: metaOf(url, result, true),
+        };
       }
       continue;
     }
@@ -478,14 +562,7 @@ async function* runSteps(
     return {
       kind: 'article',
       post: bestPartial.parsed,
-      meta: {
-        originalUrl: url.href,
-        fetchedUrl: bestPartial.fetchedUrl,
-        strategy: bestPartial.strategyName,
-        contentLength: bestPartial.contentLength,
-        paywalled: true,
-        source: 'live',
-      },
+      meta: metaOf(url, bestPartial, true),
       attempts,
       confident: false,
     };

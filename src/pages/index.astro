@@ -8,8 +8,13 @@ import Fab from '../components/Fab';
 import Translate from '../components/Translate';
 import Settings from '../components/Settings';
 import Hero from '../components/Hero';
+import { readResult } from '../lib/cache';
+import { drain, runParse } from '../lib/pipeline';
+import type { ParseResult } from '../lib/types';
 
 export const prerender = false;
+
+const ssrBudget = 6000;
 
 const q = Astro.url.searchParams.get('q');
 const userAgent = Astro.request.headers.get('user-agent') || '';
@@ -37,32 +42,55 @@ const sourceUrl = (() => {
   }
 })();
 
-if (q && isBot) {
+let article: Extract<ParseResult, { kind: 'article' }> | null = null;
+
+if (sourceUrl) {
   type = 'article';
+  const target = new URL(sourceUrl);
   try {
-    const apiUrl = `${Astro.url.origin}/api/parse?q=${encodeURIComponent(q)}`;
-    const res = await fetch(apiUrl);
-
-    if (res.ok) {
-      const article = await res.json();
-
-      title = article.title || `Parsed: ${q}`;
-
-      const articleDescription = article.dek || article.excerpt || '';
-      description = articleDescription
-        ? articleDescription.slice(0, 200)
-        : `Clean reader view of ${q}`;
-
-      image = article.lead_image_url || image;
-      author = article.author || '';
-      publishedTime = article.date_published || '';
+    let result = await readResult(target);
+    if (!result && isBot) {
+      result = await drain(
+        runParse(target, {
+          strategy: 'auto',
+          budget: ssrBudget,
+          freshness: 'cached',
+        }),
+      );
+    }
+    if (result?.kind === 'article') {
+      article = result;
+      Astro.response.headers.set(
+        'Netlify-CDN-Cache-Control',
+        'public, durable, s-maxage=3600, stale-while-revalidate=86400',
+      );
     }
   } catch (err) {
-    console.error('Failed to fetch OG data:', err);
-    title = `Spider Parser – ${q}`;
-    description = `Clean reader view of ${q}`;
+    console.error('Failed to prepare article:', err);
   }
 }
+
+if (article) {
+  const { post } = article;
+  title = post.title || `Parsed: ${q}`;
+  const articleDescription = post.dek || post.excerpt || '';
+  description = articleDescription
+    ? articleDescription.slice(0, 200)
+    : `Clean reader view of ${q}`;
+  image = post.lead_image_url || image;
+  author = post.author || '';
+  publishedTime = post.date_published || '';
+} else if (q && isBot) {
+  title = `Spider Parser – ${q}`;
+  description = `Clean reader view of ${q}`;
+}
+
+const payload = article
+  ? JSON.stringify({ post: article.post, meta: article.meta }).replace(
+      /</g,
+      '\\u003c',
+    )
+  : null;
 ---
 
 <Layout
@@ -83,10 +111,29 @@ if (q && isBot) {
   <Hero client:only />
 
   <main id="main" tabindex="-1" class="mx-auto max-w-4xl px-4 py-10">
+    {
+      article && (
+        <div id="ssr-article" class="w-full text-base-content">
+          <h1 class="font-semibold tracking-tight text-3xl mb-6">
+            {article.post.title}
+          </h1>
+          <div
+            lang={article.post.lang ?? undefined}
+            class="prose prose-invert mx-auto prose-xl leading-relaxed prose-headings:font-semibold prose-headings:tracking-tight prose-p:my-4 prose-a:underline prose-a:underline-offset-2"
+            set:html={article.post.content}
+          />
+        </div>
+      )
+    }
     <Home client:only />
     <Fab client:only />
     <Sprite />
   </main>
+  {
+    payload && (
+      <script type="application/json" id="parse-payload" is:inline set:html={payload} />
+    )
+  }
 </Layout>
 
 <script is:inline>

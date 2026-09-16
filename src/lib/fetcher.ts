@@ -19,13 +19,26 @@ const browserHeaders = {
   Referer: 'https://www.google.com/',
 };
 
+const referrers = {
+  paywall: 'https://news.google.com/',
+  challenge: 'https://t.co/',
+} as const;
+
 type Strategy = {
   readonly name: string;
+  readonly auto: boolean;
   readonly matches: (url: URL) => boolean;
   readonly headers: Record<string, string>;
   readonly rewrite?: (url: URL) => Promise<string> | string;
   readonly timeout?: number;
 };
+
+function withReferrer(strategy: Strategy, referrer: string): Strategy {
+  return {
+    ...strategy,
+    headers: { ...strategy.headers, Referer: referrer },
+  };
+}
 
 type FetchOutcome =
   | {
@@ -52,6 +65,7 @@ type Fetched = {
 const strategies: readonly Strategy[] = [
   {
     name: 'googlebot',
+    auto: true,
     matches: (url) => {
       return ['.be', '.nl', '.fr', '.de', '.pt'].some((tld) =>
         url.hostname.endsWith(tld),
@@ -66,11 +80,13 @@ const strategies: readonly Strategy[] = [
   },
   {
     name: 'regular',
+    auto: true,
     matches: () => true,
     headers: browserHeaders,
   },
   {
     name: 'bingbot',
+    auto: false,
     matches: () => false,
     headers: {
       'User-Agent':
@@ -81,6 +97,7 @@ const strategies: readonly Strategy[] = [
   },
   {
     name: 'wayback',
+    auto: false,
     matches: () => false,
     rewrite: async (url) => {
       const response = await fetch(
@@ -218,8 +235,10 @@ async function fetchGroup(
 export {
   browserHeaders,
   defaultTimeout,
+  referrers,
   strategies,
   fallback,
+  withReferrer,
   fetchWithRetry,
   fetchDocument,
   fetchGroup,

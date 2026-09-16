@@ -1,27 +1,28 @@
 import { defaultStore } from '../store/store';
-import type { ParseAttempt, ParsedPost } from './types';
+import type { DocumentState, LoadedDoc } from '../store/store';
+import { readEvents } from './stream';
+import type { ParseAttempt, ParseMeta, ParsedPost } from './types';
 
 type HistoryMode = 'push' | 'replace' | 'none';
+type LoadMode = 'interactive' | 'speculative';
 
 type LoadOptions = {
   readonly forceRefresh?: boolean;
   readonly history?: HistoryMode;
   readonly strategy?: string;
+  readonly mode?: LoadMode;
 };
 
-type ParseBody = Partial<ParsedPost> & {
-  readonly error?: string;
-  readonly attempts?: readonly ParseAttempt[];
-  readonly meta?: {
-    readonly paywalled?: boolean;
-  };
+type Pending = {
+  readonly url: string;
+  readonly controller: AbortController;
+  mode: LoadMode;
+  last: DocumentState | null;
 };
 
-const asBody = (value: unknown): ParseBody => {
-  return typeof value === 'object' && value !== null
-    ? (value as ParseBody)
-    : {};
-};
+const warmLimit = 5;
+const warm = new Map<string, LoadedDoc>();
+let pending: Pending | null = null;
 
 const logAttempts = (
   url: string,
@@ -33,6 +34,33 @@ const logAttempts = (
   console.groupCollapsed(`Spider parsed ${url} in ${attempts.length} steps`);
   console.table(attempts);
   console.groupEnd();
+};
+
+const adoptPayload = (): boolean => {
+  const node = document.getElementById('parse-payload');
+  if (!node?.textContent) {
+    return false;
+  }
+  node.remove();
+
+  try {
+    const { post, meta } = JSON.parse(node.textContent) as {
+      post: ParsedPost;
+      meta: ParseMeta;
+    };
+    defaultStore.setState({
+      document: {
+        kind: 'loaded',
+        post,
+        leadImageUrl: post.lead_image_url ?? null,
+        paywalled: meta.paywalled,
+        stage: 'final',
+      },
+    });
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 const isUrl = (value: string): boolean => {
@@ -61,15 +89,18 @@ const urlFromShare = (params: URLSearchParams): string | null => {
   return match ? match[0] : null;
 };
 
-async function loadArticle(
-  url: string,
-  options: LoadOptions = {},
-): Promise<void> {
-  const { forceRefresh = false, history: mode = 'push', strategy } = options;
-  if (!isUrl(url)) {
-    return;
+const remember = (url: string, doc: LoadedDoc): void => {
+  warm.delete(url);
+  warm.set(url, doc);
+  for (const oldest of warm.keys()) {
+    if (warm.size <= warmLimit) {
+      break;
+    }
+    warm.delete(oldest);
   }
+};
 
+const applyHistory = (url: string, mode: HistoryMode): void => {
   const target = `?q=${encodeURIComponent(url)}`;
   if (mode === 'push') {
     history.pushState({ q: url }, '', target);
@@ -77,53 +108,138 @@ async function loadArticle(
   if (mode === 'replace') {
     history.replaceState({ q: url }, '', target);
   }
+};
 
-  defaultStore.setState({ document: { kind: 'loading' } });
-  window.scrollTo({ top: 0 });
+async function run(
+  url: string,
+  params: URLSearchParams,
+  active: Pending,
+): Promise<void> {
+  const publish = (doc: DocumentState) => {
+    active.last = doc;
+    if (active.mode === 'interactive') {
+      defaultStore.setState({ document: doc });
+    }
+  };
 
-  const params = new URLSearchParams({ q: url });
+  try {
+    const res = await fetch(`/api/parse?${params}`, {
+      headers: { accept: 'application/x-ndjson' },
+      signal: active.controller.signal,
+    });
+
+    let words = -1;
+    for await (const event of readEvents(res)) {
+      if (active.controller.signal.aborted) {
+        return;
+      }
+      if (event.type === 'step') {
+        publish({ kind: 'loading', url, step: event.step });
+      }
+      if (event.type === 'article') {
+        const next = event.post.word_count ?? 0;
+        if (event.stage === 'final' || next > words) {
+          words = next;
+          const doc: LoadedDoc = {
+            kind: 'loaded',
+            post: event.post,
+            leadImageUrl: event.post.lead_image_url ?? null,
+            paywalled: event.meta.paywalled,
+            stage: event.stage,
+          };
+          publish(doc);
+          if (event.stage === 'final' && active.mode === 'speculative') {
+            remember(url, doc);
+          }
+        }
+      }
+      if (event.type === 'done') {
+        logAttempts(url, event.attempts);
+      }
+      if (event.type === 'failed') {
+        logAttempts(url, event.attempts);
+        publish({ kind: 'error', message: event.error, url });
+      }
+    }
+  } catch (error) {
+    if (active.controller.signal.aborted) {
+      return;
+    }
+    publish({ kind: 'error', message: 'Failed to reach parser.', url });
+  } finally {
+    if (pending === active) {
+      pending = null;
+    }
+  }
+}
+
+async function loadArticle(
+  url: string,
+  options: LoadOptions = {},
+): Promise<void> {
+  const {
+    forceRefresh = false,
+    history: historyMode = 'push',
+    strategy,
+    mode = 'interactive',
+  } = options;
+  if (!isUrl(url)) {
+    return;
+  }
+
+  if (mode === 'interactive') {
+    applyHistory(url, historyMode);
+  }
+
+  const bypass = forceRefresh || Boolean(strategy);
+  const ready = warm.get(url);
+  if (mode === 'interactive' && ready && !bypass) {
+    warm.delete(url);
+    defaultStore.setState({ document: ready });
+    window.scrollTo({ top: 0 });
+    return;
+  }
+
+  if (pending) {
+    if (pending.url === url && !bypass) {
+      if (mode === 'interactive' && pending.mode === 'speculative') {
+        pending.mode = 'interactive';
+        window.scrollTo({ top: 0 });
+        defaultStore.setState({
+          document: pending.last ?? { kind: 'loading', url, step: null },
+        });
+      }
+      return;
+    }
+    if (mode === 'speculative') {
+      return;
+    }
+    pending.controller.abort();
+    pending = null;
+  }
+
+  if (mode === 'interactive') {
+    defaultStore.setState({ document: { kind: 'loading', url, step: null } });
+    window.scrollTo({ top: 0 });
+  }
+
+  const params = new URLSearchParams({ q: url, stream: '1' });
   if (strategy) {
     params.set('strategy', strategy);
   }
-  if (forceRefresh || strategy) {
+  if (bypass) {
     params.set('fresh', '1');
     params.set('_t', String(Date.now()));
   }
 
-  try {
-    const res = await fetch(`/api/parse?${params}`, {
-      headers: { accept: 'application/json' },
-    });
-    const body = asBody(await res.json());
-    logAttempts(url, body.attempts ?? []);
-
-    if (res.ok && body.content) {
-      defaultStore.setState({
-        document: {
-          kind: 'loaded',
-          post: body as ParsedPost,
-          leadImageUrl: body.lead_image_url ?? null,
-          paywalled: body.meta?.paywalled ?? false,
-        },
-      });
-    } else {
-      defaultStore.setState({
-        document: {
-          kind: 'error',
-          message: body.error ?? 'The source site returned an error.',
-          url,
-        },
-      });
-    }
-  } catch {
-    defaultStore.setState({
-      document: {
-        kind: 'error',
-        message: 'Failed to reach parser.',
-        url,
-      },
-    });
-  }
+  const active: Pending = {
+    url,
+    mode,
+    controller: new AbortController(),
+    last: null,
+  };
+  pending = active;
+  await run(url, params, active);
 }
 
-export { loadArticle, isUrl, currentQuery, urlFromShare };
+export { loadArticle, adoptPayload, isUrl, currentQuery, urlFromShare };

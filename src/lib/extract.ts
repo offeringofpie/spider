@@ -71,14 +71,52 @@ export function paywallTeaser(html: string): string | null {
   return best || null;
 }
 
-export function ampUrl(html: string, base: URL): string | null {
-  const match =
-    html.match(/<link[^>]+rel=["']amphtml["'][^>]+href=["']([^"']+)["']/i) ??
-    html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']amphtml["']/i);
-  if (!match) return null;
-  try {
-    return new URL(match[1], base).href;
-  } catch {
-    return null;
-  }
+type LinkTag = {
+  readonly rel: string;
+  readonly type: string;
+  readonly href: string;
+};
+
+function attr(tag: string, name: string): string {
+  const match = tag.match(new RegExp(`\\b${name}=["']([^"']*)["']`, 'i'));
+  return match ? match[1].trim().toLowerCase() : '';
 }
+
+export function linkTags(html: string, base: URL): readonly LinkTag[] {
+  const head = html.slice(0, html.search(/<\/head>/i) + 1 || html.length);
+  const tags: LinkTag[] = [];
+
+  for (const match of head.matchAll(/<link\b[^>]*>/gi)) {
+    const tag = match[0];
+    const rel = attr(tag, 'rel');
+    const href = tag.match(/\bhref=["']([^"']+)["']/i)?.[1];
+    if (!rel || !href) {
+      continue;
+    }
+    try {
+      tags.push({ rel, type: attr(tag, 'type'), href: new URL(href, base).href });
+    } catch {
+      continue;
+    }
+  }
+  return tags;
+}
+
+export function ampUrl(html: string, base: URL): string | null {
+  const amp = linkTags(html, base).find((tag) => tag.rel === 'amphtml');
+  return amp?.href ?? null;
+}
+
+export function feedLinks(tags: readonly LinkTag[]): string[] {
+  return tags
+    .filter((tag) => tag.rel === 'alternate' && /rss|atom|xml/.test(tag.type))
+    .map((tag) => tag.href);
+}
+
+export function markdownLinks(tags: readonly LinkTag[]): string[] {
+  return tags
+    .filter((tag) => tag.rel === 'alternate' && tag.type.includes('markdown'))
+    .map((tag) => tag.href);
+}
+
+export type { LinkTag };

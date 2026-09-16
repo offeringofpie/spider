@@ -62,7 +62,21 @@ type ParseResult =
 
 type ParseEvent =
   | { readonly type: 'step'; readonly step: string; readonly at: number }
-  | { readonly type: 'attempt'; readonly attempt: ParseAttempt };
+  | { readonly type: 'attempt'; readonly attempt: ParseAttempt }
+  | {
+      readonly type: 'article';
+      readonly stage: 'draft' | 'final';
+      readonly post: ParsedPost;
+      readonly meta: ParseMeta;
+    }
+  | { readonly type: 'done'; readonly attempts: readonly ParseAttempt[] }
+  | {
+      readonly type: 'failed';
+      readonly error: string;
+      readonly suggestion: string;
+      readonly url: string;
+      readonly attempts: readonly ParseAttempt[];
+    };
 
 export type {
   ParsedPost,
