@@ -4,7 +4,6 @@ import { isLight } from '../lib/themes';
 import { loadArticle, isUrl } from '../lib/load';
 import TOC from '../components/TOC';
 import ArchiveNotice from '../components/ArchiveNotice';
-import Attempts from '../components/Attempts';
 import Resume from '../components/Resume';
 
 const rtlLanguages = new Set([
@@ -103,7 +102,6 @@ export default function Home(): React.ReactElement | null {
               Could not render this article
             </h1>
             <ArchiveNotice message={doc.message} url={doc.url} />
-            <Attempts attempts={doc.attempts} url={doc.url} />
           </article>
         </div>
       );
@@ -133,13 +131,10 @@ export default function Home(): React.ReactElement | null {
               dangerouslySetInnerHTML={{ __html: doc.post.content }}
             />
             {doc.paywalled && (
-              <>
-                <ArchiveNotice
-                  message="This article is behind a paywall."
-                  url={doc.post.url}
-                />
-                <Attempts attempts={doc.attempts} url={doc.post.url} />
-              </>
+              <ArchiveNotice
+                message="This article is behind a paywall."
+                url={doc.post.url}
+              />
             )}
           </article>
           <Resume url={doc.post.url} />

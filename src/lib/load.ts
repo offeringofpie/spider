@@ -1,6 +1,5 @@
 import { defaultStore } from '../store/store';
-import type { ParsedPost } from '../store/store';
-import type { ParseAttempt } from './types';
+import type { ParseAttempt, ParsedPost } from './types';
 
 type HistoryMode = 'push' | 'replace' | 'none';
 
@@ -15,7 +14,6 @@ type ParseBody = Partial<ParsedPost> & {
   readonly attempts?: readonly ParseAttempt[];
   readonly meta?: {
     readonly paywalled?: boolean;
-    readonly attempts?: readonly ParseAttempt[];
   };
 };
 
@@ -23,6 +21,18 @@ const asBody = (value: unknown): ParseBody => {
   return typeof value === 'object' && value !== null
     ? (value as ParseBody)
     : {};
+};
+
+const logAttempts = (
+  url: string,
+  attempts: readonly ParseAttempt[],
+): void => {
+  if (attempts.length === 0) {
+    return;
+  }
+  console.groupCollapsed(`Spider parsed ${url} in ${attempts.length} steps`);
+  console.table(attempts);
+  console.groupEnd();
 };
 
 const isUrl = (value: string): boolean => {
@@ -84,6 +94,7 @@ async function loadArticle(
       headers: { accept: 'application/json' },
     });
     const body = asBody(await res.json());
+    logAttempts(url, body.attempts ?? []);
 
     if (res.ok && body.content) {
       defaultStore.setState({
@@ -92,7 +103,6 @@ async function loadArticle(
           post: body as ParsedPost,
           leadImageUrl: body.lead_image_url ?? null,
           paywalled: body.meta?.paywalled ?? false,
-          attempts: body.meta?.attempts ?? [],
         },
       });
     } else {
@@ -101,7 +111,6 @@ async function loadArticle(
           kind: 'error',
           message: body.error ?? 'The source site returned an error.',
           url,
-          attempts: body.attempts ?? [],
         },
       });
     }
@@ -111,7 +120,6 @@ async function loadArticle(
         kind: 'error',
         message: 'Failed to reach parser.',
         url,
-        attempts: [],
       },
     });
   }

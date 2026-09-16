@@ -1,5 +1,5 @@
 import { marked } from 'marked';
-import { lazyLoadImages } from './clean';
+import { lazyLoadImages, sanitize } from './clean';
 
 export function isMarkdown(url: URL, contentType: string): boolean {
   return (
@@ -23,7 +23,7 @@ export function articleResult(
   sourceUrl: string,
   extras: ArticleExtras = {},
 ) {
-  const content = lazyLoadImages(rawContent);
+  const content = sanitize(lazyLoadImages(rawContent));
 
   const excerptMatch = content.match(/<p>([\s\S]*?)<\/p>/);
   const excerpt = excerptMatch

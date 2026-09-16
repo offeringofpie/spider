@@ -5,6 +5,21 @@ export function stripNoise(html: string): string {
     .replace(/<!--[\s\S]*?-->/g, '');
 }
 
+const eventAttrs = /\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi;
+
+const unsafeUrls =
+  /\s+(?:href|src|srcset|action|formaction|xlink:href)\s*=\s*(?:"\s*(?:javascript:|data:text\/html)[^"]*"|'\s*(?:javascript:|data:text\/html)[^']*'|(?:javascript:|data:text\/html)[^\s>]+)/gi;
+
+export function sanitize(html: string): string {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<\/?script\b[^>]*>/gi, '')
+    .replace(/<[a-z][^>]*>/gi, (tag) => {
+      return tag.replace(eventAttrs, '').replace(unsafeUrls, '');
+    });
+}
+
 export function normalizeImages(html: string): string {
   return html
     .replace(/<img\b[^>]*>/gi, (tag) => {

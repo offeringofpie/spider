@@ -3,6 +3,7 @@ import { preserveMediaEmbeds, restoreMediaEmbeds } from '../../lib/embed';
 import {
   lazyLoadImages,
   normalizeImages,
+  sanitize,
   stripAtLinks,
   stripHeadingAttrs,
   stripNoise,
@@ -30,7 +31,7 @@ import {
   llmsUrls,
   markdownUrls,
 } from '../../lib/alternates';
-import type { ParseAttempt } from '../../lib/types';
+import type { ParseAttempt, ParseMeta } from '../../lib/types';
 
 export const prerender = false;
 
@@ -221,7 +222,9 @@ async function parse(sourceUrl: string, html: string) {
     fetchAllPages: false,
   });
   if (parsed.content) {
-    parsed.content = lazyLoadImages(restoreMediaEmbeds(parsed.content));
+    parsed.content = sanitize(
+      lazyLoadImages(restoreMediaEmbeds(parsed.content)),
+    );
   }
   return parsed;
 }
@@ -732,19 +735,26 @@ export async function GET({ request }: { request: Request }) {
       });
       continue;
     }
+    const stepStarted = Date.now();
     const result = await runStep(step, url, remaining);
+    const ms = Date.now() - stepStarted;
     if (result.kind === 'success') {
+      attempts.push({
+        step,
+        status: 'success',
+        ms,
+        words: result.parsed.word_count ?? countWords(result.parsed.content),
+      });
+      const meta: ParseMeta = {
+        originalUrl: url.href,
+        fetchedUrl: result.fetchedUrl,
+        strategy: result.strategyName,
+        contentLength: result.contentLength,
+        paywalled: result.paywalled,
+        source: 'live',
+      };
       return new Response(
-        JSON.stringify({
-          ...result.parsed,
-          meta: {
-            originalUrl: url.href,
-            fetchedUrl: result.fetchedUrl,
-            strategy: result.strategyName,
-            contentLength: result.contentLength,
-            paywalled: result.paywalled,
-          },
-        }),
+        JSON.stringify({ ...result.parsed, meta, attempts }),
         {
           status: 200,
           headers: result.confident ? cacheHeaders : partialCacheHeaders,
@@ -752,12 +762,12 @@ export async function GET({ request }: { request: Request }) {
       );
     }
     if (result.kind === 'partial') {
-      attempts.push({ step, status: 'partial' });
+      attempts.push({ step, status: 'partial', ms });
       if (!bestPartial) {
         bestPartial = result;
       }
     } else {
-      attempts.push({ step, status: 'failure', error: result.error });
+      attempts.push({ step, status: 'failure', error: result.error, ms });
       if (result.error === 'Bot challenge detected') {
         botChallengeDetected = true;
       }
@@ -775,18 +785,16 @@ export async function GET({ request }: { request: Request }) {
   }
 
   if (bestPartial) {
+    const meta: ParseMeta = {
+      originalUrl: url.href,
+      fetchedUrl: bestPartial.fetchedUrl,
+      strategy: bestPartial.strategyName,
+      contentLength: bestPartial.contentLength,
+      paywalled: true,
+      source: 'live',
+    };
     return new Response(
-      JSON.stringify({
-        ...bestPartial.parsed,
-        meta: {
-          originalUrl: url.href,
-          fetchedUrl: bestPartial.fetchedUrl,
-          strategy: bestPartial.strategyName,
-          contentLength: bestPartial.contentLength,
-          paywalled: true,
-          attempts,
-        },
-      }),
+      JSON.stringify({ ...bestPartial.parsed, meta, attempts }),
       { status: 200, headers: partialCacheHeaders },
     );
   }

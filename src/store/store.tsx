@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { ParseAttempt } from '../lib/types';
+import type { ParsedPost } from '../lib/types';
 
 class Store<T extends object> {
   private state: T;
@@ -83,19 +83,6 @@ function useStore<T extends object>(store: Store<T>) {
   return [state, store.setState.bind(store)] as const;
 }
 
-type ParsedPost = {
-  readonly title: string | null;
-  readonly content: string;
-  readonly url: string;
-  readonly author: string | null;
-  readonly word_count: number | null;
-  readonly date_published: string | null;
-  readonly lead_image_url: string | null;
-  readonly dek: string | null;
-  readonly excerpt: string | null;
-  readonly lang: string | null;
-};
-
 type IdleDoc = { kind: 'idle' };
 
 type LoadingDoc = { kind: 'loading' };
@@ -105,14 +92,12 @@ type LoadedDoc = {
   post: ParsedPost;
   leadImageUrl: string | null;
   paywalled: boolean;
-  attempts: readonly ParseAttempt[];
 };
 
 type ErrorDoc = {
   kind: 'error';
   message: string;
   url: string;
-  attempts: readonly ParseAttempt[];
 };
 
 type DocumentState = IdleDoc | LoadingDoc | LoadedDoc | ErrorDoc;
