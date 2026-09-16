@@ -22,12 +22,9 @@ import {
   llmsUrls,
   markdownUrls,
 } from './alternates';
-import type {
-  ParseAttempt,
-  ParseEvent,
-  ParseMeta,
-  ParsedPost,
-} from './types';
+import { readResult, writeLog, writeResult } from './cache';
+import type { AttemptLog } from './cache';
+import type { ParseAttempt, ParseEvent, ParseResult } from './types';
 
 const archivePending = 'Archive requested, snapshot not ready yet';
 
@@ -60,23 +57,8 @@ type StrategyAttempt = StrategySuccess | StrategyPartial | StrategyFailure;
 type ParseOptions = {
   readonly strategy: string;
   readonly budget: number;
+  readonly freshness: 'cached' | 'fresh';
 };
-
-type ParseResult =
-  | {
-      readonly kind: 'article';
-      readonly post: ParsedPost;
-      readonly meta: ParseMeta;
-      readonly attempts: readonly ParseAttempt[];
-      readonly confident: boolean;
-    }
-  | {
-      readonly kind: 'failure';
-      readonly error: string;
-      readonly suggestion: string;
-      readonly url: string;
-      readonly attempts: readonly ParseAttempt[];
-    };
 
 function ampFetcher(strategy: Strategy, remaining: () => number): FetchAmp {
   return async (href) => {
@@ -364,7 +346,49 @@ function plan(url: URL, strategy: string) {
   };
 }
 
+function outcomeOf(result: ParseResult): AttemptLog['outcome'] {
+  if (result.kind === 'failure') {
+    return 'failure';
+  }
+  return result.meta.paywalled ? 'partial' : 'success';
+}
+
+async function persist(
+  url: URL,
+  result: ParseResult,
+  ms: number,
+): Promise<void> {
+  await Promise.allSettled([
+    writeResult(url, result),
+    writeLog(url, {
+      host: url.hostname,
+      url: url.href,
+      at: new Date().toISOString(),
+      ms,
+      outcome: outcomeOf(result),
+      winner: result.kind === 'article' ? result.meta.strategy : null,
+      attempts: result.attempts,
+    }),
+  ]);
+}
+
 async function* runParse(
+  url: URL,
+  options: ParseOptions,
+): AsyncGenerator<ParseEvent, ParseResult> {
+  const started = Date.now();
+  if (options.freshness === 'cached') {
+    const cached = await readResult(url);
+    if (cached) {
+      return cached;
+    }
+  }
+  const result = yield* runSteps(url, options);
+  await persist(url, result, Date.now() - started);
+  return result;
+}
+
+async function* runSteps(
   url: URL,
   options: ParseOptions,
 ): AsyncGenerator<ParseEvent, ParseResult> {
@@ -495,4 +519,4 @@ async function drain<T>(generator: AsyncGenerator<unknown, T>): Promise<T> {
 }
 
 export { runParse, drain };
-export type { ParseOptions, ParseResult };
+export type { ParseOptions };

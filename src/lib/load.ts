@@ -86,6 +86,7 @@ async function loadArticle(
     params.set('strategy', strategy);
   }
   if (forceRefresh || strategy) {
+    params.set('fresh', '1');
     params.set('_t', String(Date.now()));
   }
 

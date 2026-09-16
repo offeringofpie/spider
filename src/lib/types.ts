@@ -44,8 +44,30 @@ type ParseAttempt =
       readonly reason: string;
     };
 
+type ParseResult =
+  | {
+      readonly kind: 'article';
+      readonly post: ParsedPost;
+      readonly meta: ParseMeta;
+      readonly attempts: readonly ParseAttempt[];
+      readonly confident: boolean;
+    }
+  | {
+      readonly kind: 'failure';
+      readonly error: string;
+      readonly suggestion: string;
+      readonly url: string;
+      readonly attempts: readonly ParseAttempt[];
+    };
+
 type ParseEvent =
   | { readonly type: 'step'; readonly step: string; readonly at: number }
   | { readonly type: 'attempt'; readonly attempt: ParseAttempt };
 
-export type { ParsedPost, ParseMeta, ParseAttempt, ParseEvent };
+export type {
+  ParsedPost,
+  ParseMeta,
+  ParseAttempt,
+  ParseResult,
+  ParseEvent,
+};

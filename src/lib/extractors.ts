@@ -4,7 +4,7 @@ import {
   lazyLoadImages,
   normalizeImages,
   sanitize,
-  stripAtLinks,
+  stripOddSchemes,
   stripHeadingAttrs,
   stripNoise,
 } from './clean';
@@ -58,7 +58,7 @@ type ExtractOutcome =
 async function parseWithMercury(sourceUrl: string, html: string) {
   const parsed = await Parser.parse(sourceUrl, {
     html: stripHeadingAttrs(
-      stripAtLinks(preserveMediaEmbeds(normalizeImages(stripNoise(html)))),
+      stripOddSchemes(preserveMediaEmbeds(normalizeImages(stripNoise(html)))),
     ),
     contentType: 'html',
     fetchAllPages: false,

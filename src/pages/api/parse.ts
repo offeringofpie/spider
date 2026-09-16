@@ -1,5 +1,5 @@
 import { drain, runParse } from '../../lib/pipeline';
-import type { ParseResult } from '../../lib/pipeline';
+import type { ParseResult } from '../../lib/types';
 
 export const prerender = false;
 
@@ -104,7 +104,10 @@ export async function GET({ request }: { request: Request }) {
   }
 
   const strategy = searchParams.get('strategy') ?? 'auto';
-  return serialise(await drain(runParse(url, { strategy, budget })));
+  const freshness = searchParams.get('fresh') === '1' ? 'fresh' : 'cached';
+  return serialise(
+    await drain(runParse(url, { strategy, budget, freshness })),
+  );
 }
 
 export async function OPTIONS() {

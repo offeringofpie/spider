@@ -44,10 +44,19 @@ export function lazyLoadImages(html: string): string {
   return html.replace(/<img\b(?![^>]*\bloading=)/gi, '<img loading="lazy" decoding="async"');
 }
 
-export function stripAtLinks(html: string): string {
-  return html
-    .replace(/href=["']at:\/\/[^"']*["']/gi, 'href="#"')
-    .replace(/src=["']at:\/\/[^"']*["']/gi, '');
+const hasScheme = /^[a-z][a-z0-9+.-]*:/i;
+const resolvableScheme = /^(?:https?|ftp|mailto|tel|data):/i;
+
+export function stripOddSchemes(html: string): string {
+  return html.replace(
+    /\b(href|src)=["']([^"']*)["']/gi,
+    (match, attr: string, value: string) => {
+      if (!hasScheme.test(value) || resolvableScheme.test(value)) {
+        return match;
+      }
+      return attr.toLowerCase() === 'href' ? 'href="#"' : '';
+    },
+  );
 }
 
 export function stripHeadingAttrs(html: string): string {

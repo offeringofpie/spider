@@ -51,12 +51,36 @@ export function cleanMarkdownSource(text: string): string {
     .replace(/^\s*---\s*$\n+/m, '');
 }
 
-function normalizeUrl(value: string): string {
-  return value
-    .trim()
-    .replace(/^https?:\/\//i, '')
-    .replace(/\/+$/, '')
-    .toLowerCase();
+const trackingParams = new Set([
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term',
+  'ref',
+  'fbclid',
+  'gclid',
+]);
+
+export function normalizeUrl(value: string): string {
+  const trimmed = value.trim();
+  try {
+    const url = new URL(trimmed);
+    for (const param of [...url.searchParams.keys()]) {
+      if (trackingParams.has(param.toLowerCase())) {
+        url.searchParams.delete(param);
+      }
+    }
+    url.hash = '';
+    return `${url.host}${url.pathname}${url.search}`
+      .replace(/\/+$/, '')
+      .toLowerCase();
+  } catch {
+    return trimmed
+      .replace(/^https?:\/\//i, '')
+      .replace(/\/+$/, '')
+      .toLowerCase();
+  }
 }
 
 function tagContent(xml: string, tag: string): string | null {

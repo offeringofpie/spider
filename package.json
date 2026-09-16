@@ -19,6 +19,7 @@
     "@astrojs/netlify": "^8.2.0",
     "@astrojs/react": "^6.0.2",
     "@jocmp/mercury-parser": "^3.0.3",
+    "@netlify/blobs": "^11.1.0",
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.2.1",
     "@types/react": "^19.0.8",
