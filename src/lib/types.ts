@@ -44,4 +44,8 @@ type ParseAttempt =
       readonly reason: string;
     };
 
-export type { ParsedPost, ParseMeta, ParseAttempt };
+type ParseEvent =
+  | { readonly type: 'step'; readonly step: string; readonly at: number }
+  | { readonly type: 'attempt'; readonly attempt: ParseAttempt };
+
+export type { ParsedPost, ParseMeta, ParseAttempt, ParseEvent };
