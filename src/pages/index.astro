@@ -8,8 +8,12 @@ import Fab from '../components/Fab';
 import Translate from '../components/Translate';
 import Settings from '../components/Settings';
 import Hero from '../components/Hero';
+import EraFooter from '../components/EraFooter';
 import { readResult } from '../lib/cache';
 import { drain, runParse } from '../lib/pipeline';
+import { serverEra, themeFor } from '../lib/era';
+import { isLight } from '../lib/themes';
+import { defaultStore } from '../store/store';
 import type { ParseResult } from '../lib/types';
 
 export const prerender = false;
@@ -85,6 +89,9 @@ if (article) {
   description = `Clean reader view of ${q}`;
 }
 
+const ssrTheme = themeFor(serverEra(Astro.url), defaultStore.getState().theme);
+const proseTone = isLight(ssrTheme) ? '' : 'prose-invert';
+
 const payload = article
   ? JSON.stringify({ post: article.post, meta: article.meta }).replace(
       /</g,
@@ -119,7 +126,10 @@ const payload = article
           </h1>
           <div
             lang={article.post.lang ?? undefined}
-            class="prose prose-invert mx-auto prose-xl leading-relaxed prose-headings:font-semibold prose-headings:tracking-tight prose-p:my-4 prose-a:underline prose-a:underline-offset-2"
+            class:list={[
+              'prose mx-auto prose-xl leading-relaxed prose-headings:font-semibold prose-headings:tracking-tight prose-p:my-4 prose-a:underline prose-a:underline-offset-2',
+              proseTone,
+            ]}
             set:html={article.post.content}
           />
         </div>
@@ -129,6 +139,7 @@ const payload = article
     <Fab client:only />
     <Sprite />
   </main>
+  <EraFooter />
   {
     payload && (
       <script type="application/json" id="parse-payload" is:inline set:html={payload} />

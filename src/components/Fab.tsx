@@ -124,7 +124,7 @@ export default function Fab(): React.ReactElement | null {
 
   return (
     <div
-      className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3 print:hidden"
+      className="dial fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3 print:hidden"
       ref={fabRef}
     >
       <div
@@ -194,20 +194,22 @@ export default function Fab(): React.ReactElement | null {
                 </svg>
               </div>
             </button>
-            <button
-              onClick={() => {
-                setState({ showSettings: true });
-                setIsOpen(false);
-              }}
-              tabIndex={menuTabIndex}
-              aria-label="Voice & speed settings"
-              title="Voice & speed settings"
-              className="bg-base-300/50 backdrop-blur-xs border border-base-200 text-base-content/60 hover:text-secondary hover:bg-base-300/70 rounded-full h-14 w-14 flex items-center justify-center transition-all shrink-0"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <use href="#controls" />
-              </svg>
-            </button>
+            {state.era === 'none' && (
+              <button
+                onClick={() => {
+                  setState({ showSettings: true });
+                  setIsOpen(false);
+                }}
+                tabIndex={menuTabIndex}
+                aria-label="Voice & speed settings"
+                title="Voice & speed settings"
+                className="bg-base-300/50 backdrop-blur-xs border border-base-200 text-base-content/60 hover:text-secondary hover:bg-base-300/70 rounded-full h-14 w-14 flex items-center justify-center transition-all shrink-0"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <use href="#controls" />
+                </svg>
+              </button>
+            )}
           </div>
         )}
       </div>

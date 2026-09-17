@@ -1,3 +1,5 @@
+import { eraTheme } from './era';
+
 interface Theme {
   value: string;
   label: string;
@@ -23,7 +25,10 @@ const lightThemeList: Theme[] = [
   { value: 'valentine', label: 'Valentine' },
 ];
 
-const lightThemes = new Set(lightThemeList.map((t) => t.value));
+const lightThemes = new Set([
+  ...lightThemeList.map((t) => t.value),
+  eraTheme,
+]);
 
 const isLight = (theme: string) => {
   return lightThemes.has(theme);

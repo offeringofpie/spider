@@ -14,7 +14,7 @@ export default function ArchiveNotice({ message, url }: Props) {
   ];
 
   return (
-    <div className="mx-auto max-w-3xl mt-8 flex flex-col gap-3 rounded-lg border border-base-content/20 bg-base-200 p-4 text-sm">
+    <div className="notice mx-auto max-w-3xl mt-8 flex flex-col gap-3 rounded-lg border border-base-content/20 bg-base-200 p-4 text-sm">
       <div className="flex items-center gap-2 font-medium">
         <svg
           aria-hidden="true"

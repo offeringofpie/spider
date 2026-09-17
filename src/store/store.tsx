@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { ParsedPost } from '../lib/types';
+import { pageEra } from '../lib/era';
+import type { Era } from '../lib/era';
 
 class Store<T extends object> {
   private state: T;
@@ -115,12 +117,14 @@ type DefaultState = {
   showSettings: boolean;
   textSize: string;
   lineHeight: string;
+  era: Era;
 };
 
 const defaultStore = new Store<DefaultState>(
   {
     theme: 'abyss',
     font: 'font-mono',
+    era: pageEra(),
     document: { kind: 'idle' },
     initialized: false,
     ttsState: 'idle',

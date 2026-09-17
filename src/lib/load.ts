@@ -1,6 +1,7 @@
 import { defaultStore } from '../store/store';
 import type { DocumentState, LoadedDoc } from '../store/store';
 import { readEvents } from './stream';
+import { eraParam, eraValue } from './era';
 import type { ParseAttempt, ParseMeta, ParsedPost } from './types';
 
 type HistoryMode = 'push' | 'replace' | 'none';
@@ -101,7 +102,10 @@ const remember = (url: string, doc: LoadedDoc): void => {
 };
 
 const applyHistory = (url: string, mode: HistoryMode): void => {
-  const target = `?q=${encodeURIComponent(url)}`;
+  const current = new URLSearchParams(window.location.search);
+  const era =
+    current.get(eraParam) === eraValue ? `&${eraParam}=${eraValue}` : '';
+  const target = `?q=${encodeURIComponent(url)}${era}`;
   if (mode === 'push') {
     history.pushState({ q: url }, '', target);
   }

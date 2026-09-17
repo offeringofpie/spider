@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect } from 'react';
 import { defaultStore, useStore } from '../store/store';
 import { isLight } from '../lib/themes';
+import { themeFor } from '../lib/era';
 import { loadArticle, isUrl } from '../lib/load';
 import TOC from '../components/TOC';
 import ArchiveNotice from '../components/ArchiveNotice';
@@ -51,6 +52,7 @@ const textSizeClasses: Record<string, string> = {
 export default function Home(): React.ReactElement | null {
   const [state] = useStore(defaultStore);
   const doc = state.document;
+  const theme = themeFor(state.era, state.theme);
 
   useLayoutEffect(() => {
     if (doc.kind === 'loaded') {
@@ -144,7 +146,7 @@ export default function Home(): React.ReactElement | null {
               id="article-content"
               lang={doc.post.lang ?? undefined}
               dir={direction(doc.post.lang)}
-              className={`prose ${isLight(state.theme) ? '' : 'prose-invert'} mx-auto ${textSizeClasses[state.textSize] ?? state.textSize} ${state.lineHeight}
+              className={`prose ${isLight(theme) ? '' : 'prose-invert'} mx-auto ${textSizeClasses[state.textSize] ?? state.textSize} ${state.lineHeight}
                 prose-headings:font-semibold
                 prose-headings:tracking-tight
                 prose-headings:block

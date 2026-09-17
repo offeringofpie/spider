@@ -1,9 +1,18 @@
 ---
 import { defaultStore } from '../store/store';
+import {
+  dismissedKey,
+  eraDate,
+  eraTheme,
+  eraValue,
+  serverEra,
+  themeFor,
+} from '../lib/era';
 import '../styles/global.css';
 
 const state = defaultStore.getState();
-const currentTheme = state.theme;
+const currentEra = serverEra(Astro.url);
+const currentTheme = themeFor(currentEra, state.theme);
 const currentFont = state.font;
 
 const defaultImage = 'https://spider.jlopes.eu/spiderweb.jpg';
@@ -63,8 +72,35 @@ const graph = articleNode ? [...siteGraph, articleNode] : siteGraph;
 ---
 
 <!doctype html>
-<html lang="en" data-theme={currentTheme} data-font={currentFont}>
+<html
+  lang="en"
+  data-theme={currentTheme}
+  data-font={currentFont}
+  data-era={currentEra === 'none' ? undefined : currentEra}
+>
   <head>
+    <script
+      is:inline
+      define:vars={{ dismissedKey, eraDate, eraTheme, eraValue }}
+    >
+      const today = new Date();
+      const inDate =
+        today.getMonth() === eraDate.month &&
+        today.getDate() === eraDate.day;
+
+      const isDismissed = () => {
+        try {
+          return localStorage.getItem(dismissedKey) === today.toDateString();
+        } catch {
+          return false;
+        }
+      };
+
+      if (inDate && !isDismissed()) {
+        document.documentElement.dataset.era = eraValue;
+        document.documentElement.dataset.theme = eraTheme;
+      }
+    </script>
     <title>{title}</title>
     <link rel="canonical" href={canonical} />
     <link rel="alternate" href="/llms.txt" title="LLMs.txt" />
@@ -142,18 +178,29 @@ const graph = articleNode ? [...siteGraph, articleNode] : siteGraph;
 
     <script>
       import { defaultStore } from '../store/store';
+      import { listenForKonami, themeFor } from '../lib/era';
+      import { enterEra } from '../lib/travel';
 
       defaultStore.setState({
         initialized: true,
         showTranslateBar: false,
       });
 
+      listenForKonami(enterEra);
+
       function updateTheme() {
         const state = defaultStore.getState();
-        const theme = state.theme;
+        const era = state.era;
+        const theme = themeFor(era, state.theme);
         const font = state.font;
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.setAttribute('data-font', font);
+
+        if (era === 'none') {
+          document.documentElement.removeAttribute('data-era');
+        } else {
+          document.documentElement.setAttribute('data-era', era);
+        }
 
         const meta = document.querySelector('meta[name="theme-color"]');
         const base = getComputedStyle(document.documentElement)

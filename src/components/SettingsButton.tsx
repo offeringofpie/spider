@@ -1,4 +1,5 @@
 import { defaultStore, useStore } from '../store/store';
+import { leaveEra } from '../lib/travel';
 
 interface Props {
   variant?: 'header' | 'fab';
@@ -7,6 +8,8 @@ interface Props {
 
 const SettingsButton = ({ variant = 'header', tabIndex = 0 }: Props) => {
   const [state, setState] = useStore(defaultStore);
+  const inEra = state.era !== 'none';
+  const label = inEra ? `Leave ${state.era}` : 'Settings';
 
   const toggleSettings = () => {
     setState({
@@ -15,14 +18,16 @@ const SettingsButton = ({ variant = 'header', tabIndex = 0 }: Props) => {
     });
   };
 
+  const handleClick = inEra ? leaveEra : toggleSettings;
+
   return variant === 'fab' ? (
     <button
-      onClick={toggleSettings}
+      onClick={handleClick}
       tabIndex={tabIndex}
-      aria-label="Settings"
+      aria-label={label}
       className="bg-base-300/50 backdrop-blur-xs border border-base-200 text-base-content hover:bg-base-300/70 rounded-full flex items-center gap-2 pl-5 pr-2 h-14 transition-all"
     >
-      <span className="text-sm font-medium">Settings</span>
+      <span className="text-sm font-medium">{label}</span>
       <div className="bg-info/10 text-info rounded-full p-2">
         <svg
           aria-hidden="true"
@@ -35,11 +40,11 @@ const SettingsButton = ({ variant = 'header', tabIndex = 0 }: Props) => {
     </button>
   ) : (
     <button
-      onClick={toggleSettings}
+      onClick={handleClick}
       tabIndex={tabIndex}
       className={`text-primary cursor-pointer h-full relative transition-all duration-300 ${state.showSettings ? 'text-primary rotate-180 origin-center' : ''}`}
-      title="Settings"
-      aria-label="Settings"
+      title={label}
+      aria-label={label}
     >
       <svg aria-hidden="true" className="w-10 h-10" viewBox="0 0 24 24">
         <use href="#spiderweb" />

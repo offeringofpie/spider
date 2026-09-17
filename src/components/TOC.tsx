@@ -118,7 +118,7 @@ export default function Toc({ htmlContent }: { htmlContent: string }) {
   return (
     <>
       {}
-      <details className="lg:hidden collapse collapse-arrow bg-base-200/50 border border-primary/20 mb-8 mt-2 max-w-2xl print:hidden">
+      <details className="toc lg:hidden collapse collapse-arrow bg-base-200/50 border border-primary/20 mb-8 mt-2 max-w-2xl print:hidden">
         <summary className="collapse-title text-base-content font-medium cursor-pointer flex items-center gap-2">
           <svg
             aria-hidden="true"
@@ -159,7 +159,7 @@ export default function Toc({ htmlContent }: { htmlContent: string }) {
       </details>
 
       {}
-      <div className="hidden lg:flex fixed right-4 xl:right-8 top-32 z-40 print:hidden">
+      <div className="rail hidden lg:flex fixed right-4 xl:right-8 top-32 z-40 print:hidden">
         <div className="group flex flex-col items-end w-10 hover:w-64 overflow-hidden transition-all duration-300 ease-in-out">
           {}
           <div className="w-10 h-10 flex items-center justify-center bg-base-100 rounded-full shadow-sm text-primary mb-4 shrink-0 pointer-events-none">

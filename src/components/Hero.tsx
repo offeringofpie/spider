@@ -52,7 +52,7 @@ function Meta({ post }: { post: ParsedPost }): React.ReactElement {
   const domain = hostname(post.url);
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/60">
+    <div className="meta flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/60">
       {domain && <span className="truncate max-w-full">{domain}</span>}
       {post.author && (
         <>

@@ -197,7 +197,7 @@ export default function TranslateBar(): React.ReactElement {
       inert={!state.showTranslateBar ? true : undefined}
       role="region"
       aria-label="Translate"
-      className={`w-full bg-base-300 transition-all duration-300 ease-in-out notranslate ${
+      className={`translator w-full bg-base-300 transition-all duration-300 ease-in-out notranslate ${
         state.showTranslateBar
           ? 'max-h-20 border-b border-primary/20'
           : 'max-h-0 overflow-hidden invisible'
