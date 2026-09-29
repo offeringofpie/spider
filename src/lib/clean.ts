@@ -20,6 +20,24 @@ export function sanitize(html: string): string {
     });
 }
 
+function pictureSource(picture: string): string {
+  const img = picture.match(/<img\b[^>]*>/i)?.[0];
+  if (!img || /\ssrc=/i.test(img)) {
+    return picture;
+  }
+
+  const sources = [
+    ...picture.matchAll(/<source\b[^>]*\bsrcset=["']([^"']+)["']/gi),
+  ];
+  const srcset = sources.at(-1)?.[1];
+  if (!srcset) {
+    return picture;
+  }
+
+  const src = srcset.split(',').at(-1)?.trim().split(/\s+/)[0];
+  return picture.replace(img, img.replace(/<img\b/i, `<img src="${src}"`));
+}
+
 export function normalizeImages(html: string): string {
   return html
     .replace(/<img\b[^>]*>/gi, (tag) => {
@@ -34,6 +52,7 @@ export function normalizeImages(html: string): string {
         .join(' ');
       return out.replace(/<img\b/i, `<img ${attrs}`);
     })
+    .replace(/<picture\b[^>]*>[\s\S]*?<\/picture>/gi, pictureSource)
     .replace(
       /<div\b[^>]*>\s*(<img\b[^>]*>)\s*(<figcaption\b[^>]*>[\s\S]*?<\/figcaption>)?\s*<\/div>/gi,
       (_full, img, caption = '') => `<figure>${img}${caption}</figure>`,

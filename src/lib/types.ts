@@ -17,6 +17,7 @@ type ParseMeta = {
   readonly strategy: string;
   readonly contentLength: number;
   readonly paywalled: boolean;
+  readonly platform: 'medium' | null;
   readonly source: 'live' | 'cache' | 'client';
 };
 

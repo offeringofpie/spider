@@ -56,6 +56,7 @@ const adoptPayload = (): boolean => {
         post,
         leadImageUrl: post.lead_image_url ?? null,
         paywalled: meta.paywalled,
+        platform: meta.platform,
         stage: 'final',
       },
     });
@@ -150,6 +151,7 @@ async function run(
             post: event.post,
             leadImageUrl: event.post.lead_image_url ?? null,
             paywalled: event.meta.paywalled,
+            platform: event.meta.platform,
             stage: event.stage,
           };
           publish(doc);

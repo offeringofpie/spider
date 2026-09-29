@@ -10,6 +10,23 @@ const paywallTerms =
 const paywallMaxWords = 200;
 const paywallMinHtmlLength = 5_000;
 
+const mediumApp = /<meta[^>]+al:ios:app_name[^>]+content=["']Medium["']/i;
+const mediumWordCount = /"wordCount":(\d+)/;
+const teaserRatio = 1.5;
+
+export function mediumPage(html: string): boolean {
+  return mediumApp.test(html);
+}
+
+function mediumTeaser(html: string, words: number): boolean {
+  const declared = html.match(mediumWordCount)?.[1];
+  if (!declared || !mediumPage(html)) {
+    return false;
+  }
+
+  return Number(declared) >= words * teaserRatio;
+}
+
 export function botChallenge(html: string, title: string | null): boolean {
   if (challengeMarkers.test(html)) {
     return true;
@@ -22,6 +39,10 @@ export function botChallenge(html: string, title: string | null): boolean {
 }
 
 export function paywall(html: string, words: number): boolean {
+  if (mediumTeaser(html, words)) {
+    return true;
+  }
+
   return (
     words < paywallMaxWords &&
     html.length > paywallMinHtmlLength &&

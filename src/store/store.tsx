@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { ParsedPost } from '../lib/types';
+import type { ParsedPost, ParseMeta } from '../lib/types';
 import { pageEra } from '../lib/era';
 import type { Era } from '../lib/era';
 
@@ -94,6 +94,7 @@ type LoadedDoc = {
   post: ParsedPost;
   leadImageUrl: string | null;
   paywalled: boolean;
+  platform: ParseMeta['platform'];
   stage: 'draft' | 'final';
 };
 

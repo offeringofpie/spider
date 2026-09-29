@@ -173,7 +173,7 @@ export default function Home(): React.ReactElement | null {
                 message="This article is behind a paywall."
                 url={doc.post.url}
                 onUnlock={
-                  isMedium(doc.post.url)
+                  doc.platform === 'medium'
                     ? () =>
                         loadArticle(doc.post.url, {
                           strategy: 'medium',

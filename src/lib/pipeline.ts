@@ -25,7 +25,8 @@ import {
   llmsUrls,
   markdownUrls,
 } from './alternates';
-import { fetchMediumContent } from './medium';
+import { fetchMediumContent, isMedium } from './medium';
+import { mediumPage } from './detect';
 import { readResult, writeLog, writeResult } from './cache';
 import type { AttemptLog } from './cache';
 import type {
@@ -42,6 +43,7 @@ type StepContext = {
   prefetch: Map<string, Promise<FetchOutcome>>;
   links: readonly LinkTag[];
   referrer: string | null;
+  platform: ParseMeta['platform'];
 };
 
 type StrategySuccess = {
@@ -118,6 +120,9 @@ async function* tryStrategy(
 
   if (context.links.length === 0) {
     context.links = linkTags(fetched.html, url);
+  }
+  if (mediumPage(fetched.html)) {
+    context.platform = 'medium';
   }
 
   try {
@@ -437,6 +442,7 @@ function metaOf(
   url: URL,
   attempt: StrategySuccess | StrategyPartial,
   paywalled: boolean,
+  platform: ParseMeta['platform'],
 ): ParseMeta {
   return {
     originalUrl: url.href,
@@ -444,6 +450,7 @@ function metaOf(
     strategy: attempt.strategyName,
     contentLength: attempt.contentLength,
     paywalled,
+    platform,
     source: 'live',
   };
 }
@@ -502,6 +509,7 @@ async function* runSteps(
     prefetch: new Map(),
     links: [],
     referrer: null,
+    platform: isMedium(url.href) ? 'medium' : null,
   };
   for (const name of directSteps) {
     const strategy = strategies.find((s) => s.name === name);
@@ -564,7 +572,7 @@ async function* runSteps(
       return {
         kind: 'article',
         post: result.parsed,
-        meta: metaOf(url, result, result.paywalled),
+        meta: metaOf(url, result, result.paywalled, context.platform),
         attempts,
         confident: result.confident,
       };
@@ -578,7 +586,7 @@ async function* runSteps(
           type: 'article',
           stage: 'draft',
           post: result.parsed,
-          meta: metaOf(url, result, true),
+          meta: metaOf(url, result, true, context.platform),
         };
       }
       continue;
@@ -604,7 +612,7 @@ async function* runSteps(
     return {
       kind: 'article',
       post: bestPartial.parsed,
-      meta: metaOf(url, bestPartial, true),
+      meta: metaOf(url, bestPartial, true, context.platform),
       attempts,
       confident: false,
     };
