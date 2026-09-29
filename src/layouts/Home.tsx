@@ -3,6 +3,7 @@ import { defaultStore, useStore } from '../store/store';
 import { isLight } from '../lib/themes';
 import { themeFor } from '../lib/era';
 import { loadArticle, isUrl } from '../lib/load';
+import { isMedium } from '../lib/medium';
 import TOC from '../components/TOC';
 import ArchiveNotice from '../components/ArchiveNotice';
 
@@ -14,6 +15,7 @@ const stepLabels = {
   alternates: 'Looking for feeds and Markdown',
   wayback: 'Checking the Wayback Machine',
   savepage: 'Requesting an archive',
+  medium: 'Unlocking via Medium',
 } as const;
 
 const stepLabel = (step: string | null): string => {
@@ -125,7 +127,19 @@ export default function Home(): React.ReactElement | null {
             <h1 className="font-semibold tracking-tight text-2xl text-error mb-4">
               Could not render this article
             </h1>
-            <ArchiveNotice message={doc.message} url={doc.url} />
+            <ArchiveNotice
+              message={doc.message}
+              url={doc.url}
+              onUnlock={
+                isMedium(doc.url)
+                  ? () =>
+                      loadArticle(doc.url, {
+                        strategy: 'medium',
+                        history: 'replace',
+                      })
+                  : undefined
+              }
+            />
           </article>
         </div>
       );
@@ -158,6 +172,15 @@ export default function Home(): React.ReactElement | null {
               <ArchiveNotice
                 message="This article is behind a paywall."
                 url={doc.post.url}
+                onUnlock={
+                  isMedium(doc.post.url)
+                    ? () =>
+                        loadArticle(doc.post.url, {
+                          strategy: 'medium',
+                          history: 'replace',
+                        })
+                    : undefined
+                }
               />
             )}
           </article>

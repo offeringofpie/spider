@@ -25,6 +25,7 @@ import {
   llmsUrls,
   markdownUrls,
 } from './alternates';
+import { fetchMediumContent } from './medium';
 import { readResult, writeLog, writeResult } from './cache';
 import type { AttemptLog } from './cache';
 import type {
@@ -284,6 +285,44 @@ async function tryAlternates(
   };
 }
 
+async function tryMedium(
+  url: URL,
+  remaining: () => number,
+): Promise<StrategyAttempt> {
+  try {
+    const found = await fetchMediumContent(url, remaining() - 500);
+    if (!found) {
+      return {
+        kind: 'failure',
+        strategyName: 'medium',
+        error: 'Medium returned no unlocked content',
+      };
+    }
+    const parsed = articleResult(found.content, url.href, {
+      title: found.title,
+      author: found.author,
+      datePublished: found.datePublished,
+      leadImageUrl: found.leadImageUrl,
+      lang: found.lang,
+    });
+    return {
+      kind: 'success',
+      parsed,
+      fetchedUrl: url.href,
+      strategyName: 'medium',
+      contentLength: parsed.content.length,
+      paywalled: false,
+      confident: true,
+    };
+  } catch (error) {
+    return {
+      kind: 'failure',
+      strategyName: 'medium',
+      error: `Medium unlock failed: ${(error as Error).message}`,
+    };
+  }
+}
+
 async function trySavePage(
   url: URL,
   remaining: () => number,
@@ -342,6 +381,9 @@ async function* runStep(
   }
   if (name === 'savepage') {
     return await trySavePage(url, remaining);
+  }
+  if (name === 'medium') {
+    return await tryMedium(url, remaining);
   }
   if (name === referrerStep) {
     const retry = {

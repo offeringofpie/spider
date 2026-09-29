@@ -1,9 +1,10 @@
 interface Props {
   message: string;
   url: string;
+  onUnlock?: () => void;
 }
 
-export default function ArchiveNotice({ message, url }: Props) {
+export default function ArchiveNotice({ message, url, onUnlock }: Props) {
   const links = [
     { href: url, label: 'Open original' },
     {
@@ -25,6 +26,15 @@ export default function ArchiveNotice({ message, url }: Props) {
         </svg>
         <span>{message}</span>
       </div>
+      {onUnlock && (
+        <button
+          type="button"
+          onClick={onUnlock}
+          className="btn btn-sm btn-primary self-start"
+        >
+          Unlock full article
+        </button>
+      )}
       <div className="flex flex-wrap gap-4">
         {links.map((l) => (
           <a

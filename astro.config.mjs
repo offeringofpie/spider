@@ -20,5 +20,6 @@ export default defineConfig({
   },
   adapter: netlify({
     edgeMiddleware: true,
+    devFeatures: { edgeFunctions: false },
   }),
 });

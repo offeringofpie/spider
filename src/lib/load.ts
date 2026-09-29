@@ -17,6 +17,7 @@ type LoadOptions = {
 type Pending = {
   readonly url: string;
   readonly controller: AbortController;
+  readonly fallback: DocumentState | null;
   mode: LoadMode;
   last: DocumentState | null;
 };
@@ -162,14 +163,18 @@ async function run(
       }
       if (event.type === 'failed') {
         logAttempts(url, event.attempts);
-        publish({ kind: 'error', message: event.error, url });
+        publish(
+          active.fallback ?? { kind: 'error', message: event.error, url },
+        );
       }
     }
   } catch (error) {
     if (active.controller.signal.aborted) {
       return;
     }
-    publish({ kind: 'error', message: 'Failed to reach parser.', url });
+    publish(
+      active.fallback ?? { kind: 'error', message: 'Failed to reach parser.', url },
+    );
   } finally {
     if (pending === active) {
       pending = null;
@@ -190,6 +195,12 @@ async function loadArticle(
   if (!isUrl(url)) {
     return;
   }
+
+  const previous = defaultStore.getState().document;
+  const fallback =
+    strategy && previous.kind === 'loaded' && previous.post.url === url
+      ? previous
+      : null;
 
   if (mode === 'interactive') {
     applyHistory(url, historyMode);
@@ -240,6 +251,7 @@ async function loadArticle(
     url,
     mode,
     controller: new AbortController(),
+    fallback,
     last: null,
   };
   pending = active;
