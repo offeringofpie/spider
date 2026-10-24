@@ -1,6 +1,15 @@
 import { decodeEntities } from './extract';
 
-const feedPaths = ['/rss.xml', '/feed.xml', '/index.xml', '/atom.xml'];
+const feedPaths = [
+  '/rss.xml',
+  '/feed.xml',
+  '/index.xml',
+  '/atom.xml',
+  '/feed',
+  '/rss',
+];
+const fullText = 400;
+const teaserText = 80;
 const llmsPaths = ['/llms-full.txt', '/llms.txt'];
 
 export function markdownUrls(url: URL): string[] {
@@ -103,11 +112,12 @@ function textLength(html: string): number {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
 }
 
-interface FeedArticle {
+type FeedArticle = {
+  kind: 'full' | 'teaser';
   title: string | null;
   content: string;
   datePublished: string | null;
-}
+};
 
 export function articleFromFeed(
   xml: string,
@@ -122,11 +132,19 @@ export function articleFromFeed(
       tagContent(item, 'content:encoded') ??
       tagContent(item, 'description') ??
       tagContent(item, 'summary');
-    if (!content || textLength(content) < 400) continue;
+    if (!content) {
+      continue;
+    }
+
+    const length = textLength(content);
+    if (length < teaserText) {
+      continue;
+    }
 
     return {
+      kind: length >= fullText ? 'full' : 'teaser',
       title: tagContent(item, 'title'),
-      content,
+      content: /<[a-z]/i.test(content) ? content : `<p>${content}</p>`,
       datePublished:
         tagContent(item, 'pubDate') ??
         tagContent(item, 'published') ??

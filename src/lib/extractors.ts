@@ -1,5 +1,4 @@
 import Parser from '@jocmp/mercury-parser';
-import { preserveMediaEmbeds, restoreMediaEmbeds } from './embed';
 import {
   lazyLoadImages,
   normalizeImages,
@@ -57,16 +56,12 @@ type ExtractOutcome =
 
 async function parseWithMercury(sourceUrl: string, html: string) {
   const parsed = await Parser.parse(sourceUrl, {
-    html: stripHeadingAttrs(
-      stripOddSchemes(preserveMediaEmbeds(normalizeImages(stripNoise(html)))),
-    ),
+    html: stripHeadingAttrs(stripOddSchemes(normalizeImages(stripNoise(html)))),
     contentType: 'html',
     fetchAllPages: false,
   });
   if (parsed.content) {
-    parsed.content = sanitize(
-      lazyLoadImages(restoreMediaEmbeds(parsed.content)),
-    );
+    parsed.content = sanitize(lazyLoadImages(parsed.content));
   }
   return parsed;
 }
@@ -125,26 +120,26 @@ async function* extractArticle(
   }
 
   const lang = htmlLang(html);
-  const parsed = withLang(await parseWithMercury(url.href, html), lang);
+  const defuddled = withLang(await parseWithDefuddle(html, url.href), lang);
 
-  if (botChallenge(html, parsed.title ?? null)) {
+  if (botChallenge(html, defuddled?.title ?? null)) {
     return { kind: 'failure', error: 'Bot challenge detected' };
   }
 
-  const mercuryContent = parsed.content?.trim();
-  const mercuryWords = countWords(parsed.content);
-  const paywallDetected = paywall(html, mercuryWords);
+  const defuddleContent = defuddled?.content?.trim();
+  const defuddleWords = countWords(defuddled?.content);
+  const paywallDetected = paywall(html, defuddleWords);
 
   const structured = withLang(structuredArticle(html, url.href), lang);
   const structuredWords = countWords(structured?.content);
   if (
     structured &&
     structuredWords >= recoverWords &&
-    structuredWords >= mercuryWords * truncationRatio &&
+    structuredWords >= defuddleWords * truncationRatio &&
     (structuredWords >= confidentWords || !paywallDetected)
   ) {
     if (!structured.title) {
-      structured.title = parsed.title ?? titleFromHtml(html);
+      structured.title = defuddled?.title ?? titleFromHtml(html);
     }
     if (!structured.dek) {
       structured.dek = metaDescription(html);
@@ -152,12 +147,17 @@ async function* extractArticle(
     return found(structured, fetchedUrl, html.length, true);
   }
 
-  if (mercuryContent && mercuryWords >= minWords && !paywallDetected) {
+  if (
+    defuddled &&
+    defuddleContent &&
+    defuddleWords >= minWords &&
+    !paywallDetected
+  ) {
     return found(
-      parsed,
+      defuddled,
       fetchedUrl,
       html.length,
-      mercuryWords >= confidentWords,
+      defuddleWords >= confidentWords,
     );
   }
 
@@ -168,16 +168,19 @@ async function* extractArticle(
     }
   }
 
-  if (!mercuryContent || mercuryWords < confidentWords) {
-    const defuddled = withLang(await parseWithDefuddle(html, url.href), lang);
-    const defuddleWords = countWords(defuddled?.content);
+  if (!defuddleContent || defuddleWords < confidentWords) {
+    const mercury = withLang(
+      await parseWithMercury(url.href, html).catch(() => null),
+      lang,
+    );
+    const mercuryWords = countWords(mercury?.content);
     if (
-      defuddled &&
-      defuddleWords >= recoverWords &&
-      defuddleWords > mercuryWords &&
-      (defuddleWords >= confidentWords || !paywallDetected)
+      mercury &&
+      mercuryWords >= recoverWords &&
+      mercuryWords > defuddleWords &&
+      (mercuryWords >= confidentWords || !paywallDetected)
     ) {
-      return found(defuddled, fetchedUrl, html.length, true);
+      return found(mercury, fetchedUrl, html.length, true);
     }
   }
 
@@ -193,9 +196,9 @@ async function* extractArticle(
   }
 
   if (paywallDetected) {
-    if (structured && structuredWords > mercuryWords) {
+    if (structured && structuredWords > defuddleWords) {
       if (!structured.title) {
-        structured.title = parsed.title ?? titleFromHtml(html);
+        structured.title = defuddled?.title ?? titleFromHtml(html);
       }
       if (!structured.dek) {
         structured.dek = metaDescription(html);
@@ -207,17 +210,17 @@ async function* extractArticle(
         contentLength: html.length,
       };
     }
-    if (mercuryContent) {
-      if (!parsed.dek) {
-        parsed.dek = metaDescription(html);
+    if (defuddled && defuddleContent) {
+      if (!defuddled.dek) {
+        defuddled.dek = metaDescription(html);
       }
       const teaser = paywallTeaser(html);
       if (teaser) {
-        parsed.content = teaser;
+        defuddled.content = teaser;
       }
       return {
         kind: 'partial',
-        parsed,
+        parsed: defuddled,
         fetchedUrl,
         contentLength: html.length,
       };

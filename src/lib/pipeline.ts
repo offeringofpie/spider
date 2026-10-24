@@ -231,6 +231,7 @@ async function tryFeedAlternate(
   const candidates = discovered.length > 0 ? discovered : feedUrls(url);
   const results = await fetchGroup(candidates, browserHeaders, timeout);
 
+  let teaser: StrategyPartial | null = null;
   for (const fetched of results) {
     const article = articleFromFeed(fetched.text, url.href);
     if (!article) {
@@ -242,9 +243,18 @@ async function tryFeedAlternate(
       datePublished: article.datePublished,
       leadImageUrl: leadImage(content),
     });
-    return alternateSuccess(parsed, fetched.url, fetched.text.length);
+    if (article.kind === 'full') {
+      return alternateSuccess(parsed, fetched.url, fetched.text.length);
+    }
+    teaser ??= {
+      kind: 'partial',
+      parsed,
+      fetchedUrl: fetched.url,
+      strategyName: 'alternates',
+      contentLength: fetched.text.length,
+    };
   }
-  return null;
+  return teaser;
 }
 
 async function tryLlmsAlternate(url: URL, timeout: number) {
@@ -277,7 +287,9 @@ async function tryAlternates(
       tryFeedAlternate(url, timeout, feedLinks(links)),
       tryLlmsAlternate(url, timeout),
     ]);
-    const found = markdown ?? feed ?? llms;
+    const found =
+      [markdown, feed, llms].find((attempt) => attempt?.kind === 'success') ??
+      feed;
     if (found) {
       return found;
     }

@@ -13,6 +13,15 @@ interface DefuddleResult {
   wordCount?: number | null;
 }
 
+function isoDate(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 export async function parseWithDefuddle(html: string, sourceUrl: string) {
   try {
     const { document } = parseHTML(html);
@@ -27,7 +36,7 @@ export async function parseWithDefuddle(html: string, sourceUrl: string) {
     const parsed = articleResult(content, sourceUrl, {
       title: result.title ?? null,
       author: result.author ?? null,
-      datePublished: result.published ?? null,
+      datePublished: isoDate(result.published),
       leadImageUrl: result.image ?? null,
       wordCount:
         typeof result.wordCount === 'number'
