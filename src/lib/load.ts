@@ -38,6 +38,10 @@ const logAttempts = (
   console.groupEnd();
 };
 
+const mirrorOf = (meta: ParseMeta): string | null => {
+  return meta.strategy === 'syndication' ? meta.fetchedUrl : null;
+};
+
 const adoptPayload = (): boolean => {
   const node = document.getElementById('parse-payload');
   if (!node?.textContent) {
@@ -58,6 +62,8 @@ const adoptPayload = (): boolean => {
         paywalled: meta.paywalled,
         platform: meta.platform,
         stage: 'final',
+        mirror: mirrorOf(meta),
+        alternatives: meta.alternatives ?? [],
       },
     });
     return true;
@@ -153,6 +159,8 @@ async function run(
             paywalled: event.meta.paywalled,
             platform: event.meta.platform,
             stage: event.stage,
+            mirror: mirrorOf(event.meta),
+            alternatives: event.meta.alternatives ?? [],
           };
           publish(doc);
           if (event.stage === 'final' && active.mode === 'speculative') {
@@ -166,7 +174,12 @@ async function run(
       if (event.type === 'failed') {
         logAttempts(url, event.attempts);
         publish(
-          active.fallback ?? { kind: 'error', message: event.error, url },
+          active.fallback ?? {
+            kind: 'error',
+            message: event.error,
+            url,
+            alternatives: event.alternatives ?? [],
+          },
         );
       }
     }
@@ -175,7 +188,12 @@ async function run(
       return;
     }
     publish(
-      active.fallback ?? { kind: 'error', message: 'Failed to reach parser.', url },
+      active.fallback ?? {
+        kind: 'error',
+        message: 'Failed to reach parser.',
+        url,
+        alternatives: [],
+      },
     );
   } finally {
     if (pending === active) {

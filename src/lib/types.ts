@@ -11,6 +11,12 @@ type ParsedPost = {
   readonly lang: string | null;
 };
 
+type Alternative = {
+  title: string;
+  url: string;
+  source: string;
+};
+
 type ParseMeta = {
   readonly originalUrl: string;
   readonly fetchedUrl: string;
@@ -19,6 +25,7 @@ type ParseMeta = {
   readonly paywalled: boolean;
   readonly platform: 'medium' | null;
   readonly source: 'live' | 'cache' | 'client';
+  alternatives?: Alternative[];
 };
 
 type ParseAttempt =
@@ -59,6 +66,7 @@ type ParseResult =
       readonly suggestion: string;
       readonly url: string;
       readonly attempts: readonly ParseAttempt[];
+      alternatives?: Alternative[];
     };
 
 type ParseEvent =
@@ -77,9 +85,11 @@ type ParseEvent =
       readonly suggestion: string;
       readonly url: string;
       readonly attempts: readonly ParseAttempt[];
+      alternatives?: Alternative[];
     };
 
 export type {
+  Alternative,
   ParsedPost,
   ParseMeta,
   ParseAttempt,

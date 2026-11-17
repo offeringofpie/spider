@@ -1,10 +1,28 @@
-interface Props {
+import type { MouseEvent } from 'react';
+import { loadArticle } from '../lib/load';
+import type { Alternative } from '../lib/types';
+
+type Props = {
   message: string;
   url: string;
+  alternatives: Alternative[];
   onUnlock?: () => void;
-}
+};
 
-export default function ArchiveNotice({ message, url, onUnlock }: Props) {
+const openInReader = (event: MouseEvent, url: string): void => {
+  if (event.metaKey || event.ctrlKey || event.shiftKey) {
+    return;
+  }
+  event.preventDefault();
+  loadArticle(url);
+};
+
+export default function ArchiveNotice({
+  message,
+  url,
+  alternatives,
+  onUnlock,
+}: Props) {
   const links = [
     { href: url, label: 'Open original' },
     {
@@ -34,6 +52,25 @@ export default function ArchiveNotice({ message, url, onUnlock }: Props) {
         >
           Unlock full article
         </button>
+      )}
+      {alternatives.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="font-medium">Also covered by</span>
+          <ul className="flex flex-col gap-1">
+            {alternatives.map((alt) => (
+              <li key={alt.url}>
+                <a
+                  href={`/?q=${encodeURIComponent(alt.url)}`}
+                  onClick={(event) => openInReader(event, alt.url)}
+                  className="themed-link text-base-content underline"
+                >
+                  {alt.title}
+                </a>
+                <span className="text-base-content/60"> · {alt.source}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       <div className="flex flex-wrap gap-4">
         {links.map((l) => (

@@ -38,6 +38,15 @@ export function titleFromHtml(html: string): string | null {
   return match ? match[1].replace(/<[^>]+>/g, '').trim() || null : null;
 }
 
+export function ogTitle(html: string): string | null {
+  const tag = html.match(/<meta[^>]+og:title[^>]*>/i)?.[0];
+  const content = tag?.match(/content=(["'])(.*?)\1/i)?.[2];
+  if (!content) {
+    return null;
+  }
+  return decodeEntities(content).trim() || null;
+}
+
 export function htmlLang(html: string): string | null {
   const match = html.match(/<html[^>]*\slang=["']([^"']+)["']/i);
   if (!match) return null;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { ParsedPost, ParseMeta } from '../lib/types';
+import type { Alternative, ParsedPost, ParseMeta } from '../lib/types';
 import { pageEra } from '../lib/era';
 import type { Era } from '../lib/era';
 
@@ -96,12 +96,15 @@ type LoadedDoc = {
   paywalled: boolean;
   platform: ParseMeta['platform'];
   stage: 'draft' | 'final';
+  mirror: string | null;
+  alternatives: Alternative[];
 };
 
 type ErrorDoc = {
   kind: 'error';
   message: string;
   url: string;
+  alternatives: Alternative[];
 };
 
 type DocumentState = IdleDoc | LoadingDoc | LoadedDoc | ErrorDoc;

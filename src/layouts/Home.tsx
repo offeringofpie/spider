@@ -16,6 +16,7 @@ const stepLabels = {
   wayback: 'Checking the Wayback Machine',
   savepage: 'Requesting an archive',
   medium: 'Unlocking via Medium',
+  syndication: 'Looking for a syndicated copy',
 } as const;
 
 const stepLabel = (step: string | null): string => {
@@ -42,6 +43,10 @@ const direction = (lang: string | null) => {
     return undefined;
   }
   return rtlLanguages.has(lang.split('-')[0].toLowerCase()) ? 'rtl' : undefined;
+};
+
+const hostname = (url: string): string => {
+  return new URL(url).hostname.replace(/^www\./, '');
 };
 
 const textSizeClasses: Record<string, string> = {
@@ -130,6 +135,7 @@ export default function Home(): React.ReactElement | null {
             <ArchiveNotice
               message={doc.message}
               url={doc.url}
+              alternatives={doc.alternatives}
               onUnlock={
                 isMedium(doc.url)
                   ? () =>
@@ -156,6 +162,19 @@ export default function Home(): React.ReactElement | null {
                   : ''}
             </span>
             <TOC htmlContent={doc.post.content} />
+            {doc.mirror && (
+              <p className="mx-auto max-w-3xl mb-6 text-sm text-base-content/70">
+                Syndicated copy via{' '}
+                <a
+                  href={doc.mirror}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="themed-link underline"
+                >
+                  {hostname(doc.mirror)}
+                </a>
+              </p>
+            )}
             <div
               id="article-content"
               lang={doc.post.lang ?? undefined}
@@ -172,6 +191,7 @@ export default function Home(): React.ReactElement | null {
               <ArchiveNotice
                 message="This article is behind a paywall."
                 url={doc.post.url}
+                alternatives={doc.alternatives}
                 onUnlock={
                   doc.platform === 'medium'
                     ? () =>

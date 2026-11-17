@@ -76,6 +76,7 @@ function terminal(result: ParseResult): ParseEvent[] {
         suggestion: result.suggestion,
         url: result.url,
         attempts: result.attempts,
+        alternatives: result.alternatives,
       },
     ];
   }
@@ -140,6 +141,7 @@ function serialise(result: ParseResult): Response {
       url: result.url,
       suggestion: result.suggestion,
       attempts: result.attempts,
+      alternatives: result.alternatives,
       archive_links: [
         {
           label: 'Wayback Machine snapshots',

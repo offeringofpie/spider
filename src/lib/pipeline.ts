@@ -12,11 +12,19 @@ import {
 import type { FetchOutcome, Strategy } from './fetcher';
 import { extractArticle, parseWithMercury } from './extractors';
 import type { FetchAmp, ParsedArticle } from './extractors';
-import { countWords, feedLinks, linkTags, markdownLinks } from './extract';
+import {
+  countWords,
+  feedLinks,
+  linkTags,
+  markdownLinks,
+  ogTitle,
+  titleFromHtml,
+} from './extract';
 import type { LinkTag } from './extract';
 import { articleResult, parseMarkdown } from './markdown';
 import {
   absolutize,
+  articleFromCms,
   articleFromFeed,
   articleFromLlms,
   cleanMarkdownSource,
@@ -24,12 +32,22 @@ import {
   leadImage,
   llmsUrls,
   markdownUrls,
+  substackUrls,
+  wordpressUrls,
 } from './alternates';
 import { fetchMediumContent, isMedium } from './medium';
-import { mediumPage } from './detect';
-import { readResult, writeLog, writeResult } from './cache';
-import type { AttemptLog } from './cache';
+import { botChallenge, mediumPage } from './detect';
+import { resolveSyndication } from './syndication';
+import {
+  readHostStats,
+  readResult,
+  writeHostStats,
+  writeLog,
+  writeResult,
+} from './cache';
+import type { AttemptLog, HostStats } from './cache';
 import type {
+  Alternative,
   ParseAttempt,
   ParseEvent,
   ParseMeta,
@@ -38,12 +56,17 @@ import type {
 
 const archivePending = 'Archive requested, snapshot not ready yet';
 const referrerStep = 'regular+referrer';
+const syndicationStep = 'syndication';
+const wordpressApi = 'https://api.w.org/';
+const failingRuns = 3;
 
 type StepContext = {
   prefetch: Map<string, Promise<FetchOutcome>>;
   links: readonly LinkTag[];
   referrer: string | null;
   platform: ParseMeta['platform'];
+  title: string | null;
+  alternatives: Alternative[];
 };
 
 type StrategySuccess = {
@@ -123,6 +146,9 @@ async function* tryStrategy(
   }
   if (mediumPage(fetched.html)) {
     context.platform = 'medium';
+  }
+  if (!botChallenge(fetched.html, null)) {
+    context.title ??= ogTitle(fetched.html) ?? titleFromHtml(fetched.html);
   }
 
   try {
@@ -223,25 +249,27 @@ async function tryMarkdownAlternate(
   return null;
 }
 
-async function tryFeedAlternate(
+async function tryArticleAlternate(
   url: URL,
+  candidates: string[],
+  headers: Record<string, string>,
   timeout: number,
-  discovered: string[],
+  read: typeof articleFromFeed,
 ) {
-  const candidates = discovered.length > 0 ? discovered : feedUrls(url);
-  const results = await fetchGroup(candidates, browserHeaders, timeout);
+  const results = await fetchGroup(candidates, headers, timeout);
 
   let teaser: StrategyPartial | null = null;
   for (const fetched of results) {
-    const article = articleFromFeed(fetched.text, url.href);
+    const article = read(fetched.text, url.href);
     if (!article) {
       continue;
     }
     const content = absolutize(article.content, url.href);
     const parsed = articleResult(content, url.href, {
       title: article.title,
+      author: article.author,
       datePublished: article.datePublished,
-      leadImageUrl: leadImage(content),
+      leadImageUrl: article.image ?? leadImage(content),
     });
     if (article.kind === 'full') {
       return alternateSuccess(parsed, fetched.url, fetched.text.length);
@@ -255,6 +283,31 @@ async function tryFeedAlternate(
     };
   }
   return teaser;
+}
+
+async function tryFeedAlternate(
+  url: URL,
+  timeout: number,
+  discovered: string[],
+) {
+  const candidates = discovered.length > 0 ? discovered : feedUrls(url);
+  return tryArticleAlternate(
+    url,
+    candidates,
+    browserHeaders,
+    timeout,
+    articleFromFeed,
+  );
+}
+
+async function tryCmsAlternate(
+  url: URL,
+  timeout: number,
+  discovered: string[],
+) {
+  const headers = { ...browserHeaders, Accept: 'application/json' };
+  const candidates = [...wordpressUrls(url, discovered), ...substackUrls(url)];
+  return tryArticleAlternate(url, candidates, headers, timeout, articleFromCms);
 }
 
 async function tryLlmsAlternate(url: URL, timeout: number) {
@@ -282,14 +335,24 @@ async function tryAlternates(
 ): Promise<StrategyAttempt> {
   const timeout = alternateTimeout(remaining());
   if (timeout >= 800) {
-    const [markdown, feed, llms] = await Promise.all([
+    const wordpress = links
+      .filter(
+        (tag) =>
+          tag.rel === wordpressApi || tag.href.includes('/wp-json/wp/v2/'),
+      )
+      .map((tag) => tag.href);
+    const [markdown, cms, feed, llms] = await Promise.all([
       tryMarkdownAlternate(url, timeout, markdownLinks(links)),
+      tryCmsAlternate(url, timeout, wordpress),
       tryFeedAlternate(url, timeout, feedLinks(links)),
       tryLlmsAlternate(url, timeout),
     ]);
     const found =
-      [markdown, feed, llms].find((attempt) => attempt?.kind === 'success') ??
-      feed;
+      [markdown, cms, feed, llms].find(
+        (attempt) => attempt?.kind === 'success',
+      ) ??
+      feed ??
+      cms;
     if (found) {
       return found;
     }
@@ -387,14 +450,68 @@ async function trySavePage(
   }
 }
 
+async function discoverLinks(url: URL, context: StepContext): Promise<void> {
+  const [first] = context.prefetch.values();
+  if (context.links.length > 0 || !first) {
+    return;
+  }
+
+  const fetched = await first;
+  if (fetched.kind === 'fetched') {
+    context.links = linkTags(fetched.html, url);
+  }
+}
+
+async function* trySyndication(
+  url: URL,
+  remaining: () => number,
+  context: StepContext,
+  partial: ParsedArticle | null,
+): AsyncGenerator<ParseEvent, StrategyAttempt> {
+  const found = yield* resolveSyndication(
+    {
+      url,
+      title: partial?.title ?? context.title,
+      author: partial?.author ?? null,
+      datePublished: partial?.date_published ?? null,
+      lang: partial?.lang ?? null,
+    },
+    remaining,
+  );
+  context.alternatives = found.alternatives;
+  if (!found.mirror) {
+    return {
+      kind: 'failure',
+      strategyName: syndicationStep,
+      error: 'No open syndicated copy found',
+    };
+  }
+
+  found.mirror.parsed.url = url.href;
+  return {
+    kind: 'success',
+    parsed: found.mirror.parsed,
+    fetchedUrl: found.mirror.fetchedUrl,
+    strategyName: syndicationStep,
+    contentLength: found.mirror.contentLength,
+    paywalled: false,
+    confident: true,
+  };
+}
+
 async function* runStep(
   name: string,
   url: URL,
   remaining: () => number,
   context: StepContext,
+  partial: ParsedArticle | null,
 ): AsyncGenerator<ParseEvent, StrategyAttempt> {
   if (name === 'alternates') {
+    await discoverLinks(url, context);
     return await tryAlternates(url, remaining, context.links);
+  }
+  if (name === syndicationStep) {
+    return yield* trySyndication(url, remaining, context, partial);
   }
   if (name === 'savepage') {
     return await trySavePage(url, remaining);
@@ -432,20 +549,47 @@ function* skipFrom(
   }
 }
 
-function plan(url: URL, strategy: string) {
+function rank(steps: string[], stats: HostStats | null): string[] {
+  if (!stats) {
+    return steps;
+  }
+
+  const rate = (step: string) => {
+    const entry = stats[step];
+    return entry ? entry.wins / entry.runs : 0;
+  };
+  const failing = (step: string) => {
+    const entry = stats[step];
+    return entry !== undefined && entry.runs >= failingRuns && entry.wins === 0;
+  };
+
+  const [winner] = steps
+    .filter((step) => step !== referrerStep && rate(step) > 0)
+    .sort((a, b) => rate(b) - rate(a) || stats[a].ms - stats[b].ms);
+  const rest = steps.filter((step) => step !== winner);
+  return [
+    ...steps.filter((step) => step === winner),
+    ...rest.filter((step) => !failing(step)),
+    ...rest.filter(failing),
+  ];
+}
+
+function plan(url: URL, strategy: string, stats: HostStats | null) {
   if (strategy !== 'auto') {
     return { steps: [strategy], directSteps: new Set<string>() };
   }
   const direct = strategies.filter((s) => s.auto);
   const primary = direct.find((s) => s.matches(url)) ?? fallback;
   const ordered = [primary, ...direct.filter((s) => s !== primary)];
+  const steps = [
+    ...ordered.map((s) => s.name),
+    'medium',
+    referrerStep,
+    'alternates',
+    'wayback',
+  ];
   return {
-    steps: [
-      ...ordered.map((s) => s.name),
-      referrerStep,
-      'alternates',
-      'wayback',
-    ],
+    steps: [...rank(steps, stats), syndicationStep],
     directSteps: new Set(ordered.map((s) => s.name)),
   };
 }
@@ -454,7 +598,7 @@ function metaOf(
   url: URL,
   attempt: StrategySuccess | StrategyPartial,
   paywalled: boolean,
-  platform: ParseMeta['platform'],
+  context: StepContext,
 ): ParseMeta {
   return {
     originalUrl: url.href,
@@ -462,9 +606,14 @@ function metaOf(
     strategy: attempt.strategyName,
     contentLength: attempt.contentLength,
     paywalled,
-    platform,
+    platform: context.platform,
     source: 'live',
+    alternatives: context.alternatives,
   };
+}
+
+function wordsOf(parsed: ParsedArticle): number {
+  return parsed.word_count ?? countWords(parsed.content);
 }
 
 function outcomeOf(result: ParseResult): AttemptLog['outcome'] {
@@ -478,9 +627,11 @@ async function persist(
   url: URL,
   result: ParseResult,
   ms: number,
+  stats: HostStats | null,
 ): Promise<void> {
   await Promise.allSettled([
     writeResult(url, result),
+    writeHostStats(url.hostname, stats, result),
     writeLog(url, {
       host: url.hostname,
       url: url.href,
@@ -498,30 +649,36 @@ async function* runParse(
   options: ParseOptions,
 ): AsyncGenerator<ParseEvent, ParseResult> {
   const started = Date.now();
+  const history = readHostStats(url.hostname);
   if (options.freshness === 'cached') {
     const cached = await readResult(url);
     if (cached) {
       return cached;
     }
   }
-  const result = yield* runSteps(url, options);
-  await persist(url, result, Date.now() - started);
+  const stats = await history;
+  const result = yield* runSteps(url, options, stats);
+  await persist(url, result, Date.now() - started, stats);
   return result;
 }
 
 async function* runSteps(
   url: URL,
   options: ParseOptions,
+  stats: HostStats | null,
 ): AsyncGenerator<ParseEvent, ParseResult> {
   const started = Date.now();
   const remaining = () => options.budget - (Date.now() - started);
-  const { steps, directSteps } = plan(url, options.strategy);
+  const { steps, directSteps } = plan(url, options.strategy, stats);
+  const knownMedium = isMedium(url.href) || (stats?.medium?.wins ?? 0) > 0;
 
   const context: StepContext = {
     prefetch: new Map(),
     links: [],
     referrer: null,
-    platform: isMedium(url.href) ? 'medium' : null,
+    platform: knownMedium ? 'medium' : null,
+    title: null,
+    alternatives: [],
   };
   for (const name of directSteps) {
     const strategy = strategies.find((s) => s.name === name);
@@ -533,6 +690,7 @@ async function* runSteps(
   let bestPartial: StrategyPartial | null = null;
   let firstFailure: StrategyFailure | null = null;
   let botChallengeDetected = false;
+  let blocked = false;
   let archiveRequested = false;
   let notFound = false;
 
@@ -547,11 +705,23 @@ async function* runSteps(
       yield* skipFrom(attempts, steps, position, 'Ran out of time');
       break;
     }
-    if (bestPartial && directSteps.has(step)) {
+    if (
+      step === 'medium' &&
+      options.strategy === 'auto' &&
+      context.platform !== 'medium'
+    ) {
       yield* record(attempts, {
         step,
         status: 'skipped',
-        reason: 'A paywalled copy was already recovered',
+        reason: 'Not a Medium post',
+      });
+      continue;
+    }
+    if (step === syndicationStep && !blocked && !bestPartial) {
+      yield* record(attempts, {
+        step,
+        status: 'skipped',
+        reason: 'Nothing blocked or truncated to replace',
       });
       continue;
     }
@@ -571,7 +741,14 @@ async function* runSteps(
 
     yield { type: 'step', step, at: Date.now() - started };
     const stepStarted = Date.now();
-    const result = yield* runStep(step, url, remaining, context);
+    const partial: ParsedArticle | null = bestPartial?.parsed ?? null;
+    const result = yield* runStep(
+      step,
+      url,
+      remaining,
+      context,
+      partial,
+    );
     const ms = Date.now() - stepStarted;
 
     if (result.kind === 'success') {
@@ -579,12 +756,12 @@ async function* runSteps(
         step,
         status: 'success',
         ms,
-        words: result.parsed.word_count ?? countWords(result.parsed.content),
+        words: wordsOf(result.parsed),
       });
       return {
         kind: 'article',
         post: result.parsed,
-        meta: metaOf(url, result, result.paywalled, context.platform),
+        meta: metaOf(url, result, result.paywalled, context),
         attempts,
         confident: result.confident,
       };
@@ -592,13 +769,13 @@ async function* runSteps(
 
     if (result.kind === 'partial') {
       yield* record(attempts, { step, status: 'partial', ms });
-      if (!bestPartial) {
+      if (!bestPartial || wordsOf(result.parsed) > wordsOf(bestPartial.parsed)) {
         bestPartial = result;
         yield {
           type: 'article',
           stage: 'draft',
           post: result.parsed,
-          meta: metaOf(url, result, true, context.platform),
+          meta: metaOf(url, result, true, context),
         };
       }
       continue;
@@ -607,6 +784,10 @@ async function* runSteps(
     yield* record(attempts, { step, status: 'failure', error: result.error, ms });
     if (result.error === 'Bot challenge detected') {
       botChallengeDetected = true;
+      blocked = true;
+    }
+    if (/^HTTP 40[13]$/.test(result.error)) {
+      blocked = true;
     }
     if (result.error === archivePending) {
       archiveRequested = true;
@@ -624,7 +805,7 @@ async function* runSteps(
     return {
       kind: 'article',
       post: bestPartial.parsed,
-      meta: metaOf(url, bestPartial, true, context.platform),
+      meta: metaOf(url, bestPartial, true, context),
       attempts,
       confident: false,
     };
@@ -646,6 +827,7 @@ async function* runSteps(
     suggestion,
     url: url.href,
     attempts,
+    alternatives: context.alternatives,
   };
 }
 

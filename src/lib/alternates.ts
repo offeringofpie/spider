@@ -11,6 +11,9 @@ const feedPaths = [
 const fullText = 400;
 const teaserText = 80;
 const llmsPaths = ['/llms-full.txt', '/llms.txt'];
+const wordpressFields = 'title,content,date,link,yoast_head_json';
+const substackPath = /^\/p\/([^/]+)\/?$/;
+const paidAudiences = new Set(['only_paid', 'founding']);
 
 export function markdownUrls(url: URL): string[] {
   const path = url.pathname.replace(/\/+$/, '');
@@ -24,6 +27,28 @@ export function feedUrls(url: URL): string[] {
 
 export function llmsUrls(url: URL): string[] {
   return llmsPaths.map((path) => `${url.origin}${path}`);
+}
+
+export function wordpressUrls(url: URL, discovered: string[]): string[] {
+  const slug = url.pathname.split('/').filter(Boolean).pop();
+  const urls = discovered.filter((href) => href.includes('/wp/v2/'));
+  if (!slug) {
+    return urls;
+  }
+
+  const roots = [
+    `${url.origin}/wp-json/`,
+    ...discovered.filter((href) => href.endsWith('/wp-json/')),
+  ];
+  for (const root of roots) {
+    urls.push(`${root}wp/v2/posts?slug=${slug}&_fields=${wordpressFields}`);
+  }
+  return [...new Set(urls)];
+}
+
+export function substackUrls(url: URL): string[] {
+  const slug = url.pathname.match(substackPath)?.[1];
+  return slug ? [`${url.origin}/api/v1/posts/${slug}`] : [];
 }
 
 export function absolutize(html: string, base: string): string {
@@ -112,17 +137,38 @@ function textLength(html: string): number {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
 }
 
-type FeedArticle = {
-  kind: 'full' | 'teaser';
+type ArticleDetails = {
   title: string | null;
-  content: string;
   datePublished: string | null;
+  author: string | null;
+  image: string | null;
 };
+
+type AlternateArticle = ArticleDetails & {
+  kind: 'full' | 'teaser';
+  content: string;
+};
+
+function alternateArticle(
+  content: string,
+  details: ArticleDetails,
+): AlternateArticle | null {
+  const length = textLength(content);
+  if (length < teaserText) {
+    return null;
+  }
+
+  return {
+    ...details,
+    kind: length >= fullText ? 'full' : 'teaser',
+    content: /<[a-z]/i.test(content) ? content : `<p>${content}</p>`,
+  };
+}
 
 export function articleFromFeed(
   xml: string,
   target: string,
-): FeedArticle | null {
+): AlternateArticle | null {
   for (const match of xml.matchAll(/<(item|entry)\b[\s\S]*?<\/\1>/gi)) {
     const item = match[0];
     const link = itemLink(item);
@@ -136,22 +182,103 @@ export function articleFromFeed(
       continue;
     }
 
-    const length = textLength(content);
-    if (length < teaserText) {
-      continue;
-    }
-
-    return {
-      kind: length >= fullText ? 'full' : 'teaser',
+    const article = alternateArticle(content, {
       title: tagContent(item, 'title'),
-      content: /<[a-z]/i.test(content) ? content : `<p>${content}</p>`,
       datePublished:
         tagContent(item, 'pubDate') ??
         tagContent(item, 'published') ??
         tagContent(item, 'updated'),
-    };
+      author: null,
+      image: null,
+    });
+    if (article) {
+      return article;
+    }
   }
   return null;
+}
+
+type WordpressPost = {
+  link?: string;
+  date?: string;
+  title?: { rendered?: string };
+  content?: { rendered?: string };
+  yoast_head_json?: { author?: string; og_image?: { url?: string }[] };
+};
+
+type SubstackPost = {
+  slug?: string;
+  title?: string;
+  post_date?: string;
+  body_html?: string | null;
+  audience?: string;
+  cover_image?: string | null;
+  publishedBylines?: { name?: string }[];
+};
+
+function wordpressArticle(
+  data: unknown,
+  target: string,
+): AlternateArticle | null {
+  const posts = (Array.isArray(data) ? data : [data]) as WordpressPost[];
+  const post = posts.find(
+    (candidate) =>
+      typeof candidate?.link === 'string' &&
+      normalizeUrl(candidate.link) === normalizeUrl(target),
+  );
+  const content = post?.content?.rendered;
+  if (!post || typeof content !== 'string') {
+    return null;
+  }
+
+  const title = post.title?.rendered;
+  return alternateArticle(content, {
+    title: title ? decodeEntities(title) : null,
+    datePublished: post.date ?? null,
+    author: post.yoast_head_json?.author ?? null,
+    image: post.yoast_head_json?.og_image?.[0]?.url ?? null,
+  });
+}
+
+function substackArticle(
+  data: unknown,
+  target: string,
+): AlternateArticle | null {
+  const post = data as SubstackPost | null;
+  const slug = new URL(target).pathname.match(substackPath)?.[1];
+  if (!post || !slug || post.slug !== slug) {
+    return null;
+  }
+  if (typeof post.body_html !== 'string') {
+    return null;
+  }
+
+  const authors = (post.publishedBylines ?? [])
+    .map((byline) => byline.name)
+    .filter(Boolean);
+  const article = alternateArticle(post.body_html, {
+    title: post.title ?? null,
+    datePublished: post.post_date ?? null,
+    author: authors.length > 0 ? authors.join(', ') : null,
+    image: post.cover_image ?? null,
+  });
+  if (article && paidAudiences.has(post.audience ?? '')) {
+    return { ...article, kind: 'teaser' };
+  }
+  return article;
+}
+
+export function articleFromCms(
+  text: string,
+  target: string,
+): AlternateArticle | null {
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  return wordpressArticle(data, target) ?? substackArticle(data, target);
 }
 
 interface LlmsArticle {

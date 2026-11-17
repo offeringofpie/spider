@@ -1,3 +1,4 @@
+import { marked } from 'marked';
 import { countWords, decodeEntities } from './extract';
 import { absolutize, leadImage } from './alternates';
 import { articleResult } from './markdown';
@@ -26,7 +27,15 @@ const contentKeys = new Set([
   'richtext',
   'html',
   'text',
+  'markdown',
+  '__html',
 ]);
+
+const blockTag = /<(?:p|br|div|h[1-6]|ul|ol|blockquote|figure)\b/i;
+const flightChunk =
+  /self\.__next_f\.push\(\[1,\s*("[^"\\]*(?:\\[\s\S][^"\\]*)*")\]\)/g;
+const flightHeader = /[0-9a-f]+:(?:T([0-9a-f]+),)?/y;
+const proseLength = 500;
 
 interface JsonLdArticle {
   articleBody: string;
@@ -127,7 +136,9 @@ function jsonBlobs(html: string): string[] {
 }
 
 function looksLikeProse(text: string): boolean {
-  if (/<(?:p|br|div|h[1-6]|ul|ol|blockquote|figure)\b/i.test(text)) return true;
+  if (blockTag.test(text)) {
+    return true;
+  }
   return /[.!?]["')\]]?\s/.test(text) && /\s/.test(text);
 }
 
@@ -142,7 +153,7 @@ function deepFindBody(root: unknown): string | null {
     if (typeof node === 'string') {
       if (
         contentKeys.has(key.toLowerCase()) &&
-        node.length > 500 &&
+        node.length > proseLength &&
         looksLikeProse(node) &&
         (!best || node.length > best.length)
       ) {
@@ -161,8 +172,78 @@ function deepFindBody(root: unknown): string | null {
   return best;
 }
 
+function flightPayload(html: string): string {
+  let payload = '';
+  for (const match of html.matchAll(flightChunk)) {
+    try {
+      const chunk: unknown = JSON.parse(match[1]);
+      if (typeof chunk === 'string') {
+        payload += chunk;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return payload;
+}
+
+function flightRows(payload: string): { texts: string[]; rows: string[] } {
+  const bytes = Buffer.from(payload, 'utf8');
+  const raw = bytes.toString('latin1');
+  const texts: string[] = [];
+  const rows: string[] = [];
+
+  let at = 0;
+  while (at < raw.length) {
+    flightHeader.lastIndex = at;
+    const header = flightHeader.exec(raw);
+    const start = at + (header?.[0].length ?? 0);
+    if (header?.[1]) {
+      at = start + parseInt(header[1], 16);
+      texts.push(bytes.subarray(start, at).toString('utf8'));
+      continue;
+    }
+    const newline = raw.indexOf('\n', start);
+    const end = newline === -1 ? raw.length : newline;
+    if (header) {
+      rows.push(bytes.subarray(start, end).toString('utf8'));
+    }
+    at = end + 1;
+  }
+  return { texts, rows };
+}
+
+function flightBody(row: string): string | null {
+  if (!/^[[{]/.test(row)) {
+    return null;
+  }
+  try {
+    return deepFindBody(JSON.parse(row));
+  } catch {
+    return null;
+  }
+}
+
+function flightArticle(html: string): string | null {
+  const payload = flightPayload(html);
+  if (!payload) {
+    return null;
+  }
+
+  const { texts, rows } = flightRows(payload);
+  const candidates = [
+    ...texts.filter((text) => text.length > proseLength && looksLikeProse(text)),
+    ...rows.map(flightBody).filter((body) => body !== null),
+  ];
+  const best = candidates.sort((a, b) => b.length - a.length)[0];
+  if (!best) {
+    return null;
+  }
+  return blockTag.test(best) ? best : String(marked.parse(best));
+}
+
 export function hydrationArticle(html: string): string | null {
-  let best: string | null = null;
+  let best = flightArticle(html);
   for (const blob of jsonBlobs(html)) {
     let data: unknown;
     try {
@@ -177,7 +258,9 @@ export function hydrationArticle(html: string): string | null {
 }
 
 function bodyToHtml(text: string): string {
-  if (/<(?:p|br|div|h[1-6]|ul|ol|blockquote|figure)\b/i.test(text)) return text;
+  if (blockTag.test(text)) {
+    return text;
+  }
   const decoded = decodeEntities(text);
   const parts = decoded.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
   const chunks =
