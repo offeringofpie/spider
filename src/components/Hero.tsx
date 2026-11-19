@@ -13,6 +13,29 @@ const readTime = (wordCount: number) => {
   return `${roundedMinutes} minute${roundedMinutes !== 1 ? 's' : ''}`;
 };
 
+const wordCount = (count: number) => {
+  return `${count.toLocaleString('en-GB')} word${count !== 1 ? 's' : ''}`;
+};
+
+const dekPrefix = 60;
+
+const leadText = (html: string) => {
+  const paragraph = html.match(/<p[\s>][\s\S]*?<\/p>/i)?.[0] ?? '';
+  const doc = new DOMParser().parseFromString(paragraph, 'text/html');
+  return doc.body.textContent ?? '';
+};
+
+const comparable = (text: string) => {
+  return text.replace(/\s+/g, ' ').trim().toLowerCase();
+};
+
+const repeatsLead = (dek: string, html: string) => {
+  const opening = comparable(dek)
+    .replace(/(…|\.\.\.)$/, '')
+    .slice(0, dekPrefix);
+  return comparable(leadText(html)).startsWith(opening);
+};
+
 const stripSiteSuffix = (title: string, url: string) => {
   const match = title.match(/^(.*?)\s+[-|–—]\s+([^-|–—]+)$/);
   if (!match) {
@@ -52,7 +75,7 @@ function Meta({ post }: { post: ParsedPost }): React.ReactElement {
   const domain = hostname(post.url);
 
   return (
-    <div className="meta flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/60">
+    <div className="meta flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content">
       {domain && <span className="truncate max-w-full">{domain}</span>}
       {post.author && (
         <>
@@ -62,6 +85,8 @@ function Meta({ post }: { post: ParsedPost }): React.ReactElement {
       )}
       {post.word_count && (
         <>
+          <span aria-hidden="true">·</span>
+          <span>{wordCount(post.word_count)}</span>
           <span aria-hidden="true">·</span>
           <span>{readTime(post.word_count)} read time</span>
         </>
@@ -104,6 +129,8 @@ export default function Hero(): React.ReactElement | null {
   const { post } = doc;
   const leadImageUrl = imageFailed ? null : doc.leadImageUrl;
   const title = post.title ? stripSiteSuffix(post.title, post.url) : '';
+  const dek = post.dek || post.excerpt;
+  const showDek = dek && !repeatsLead(dek, post.content);
 
   if (!leadImageUrl) {
     return (
@@ -145,18 +172,18 @@ export default function Hero(): React.ReactElement | null {
           >
             {title}
           </h1>
-          {(post.dek || post.excerpt) && (
+          {showDek && (
             <p
               id="article-dek"
-              className="text-base-content/70 text-sm line-clamp-3"
+              className="text-sm line-clamp-3"
             >
-              {post.dek || post.excerpt}
+              {dek}
             </p>
           )}
         </div>
       </div>
 
-      <div className="relative max-w-4xl mx-auto px-4 pb-10">
+      <div className="relative max-w-4xl mx-auto px-4 pb-4">
         <Meta post={post} />
       </div>
     </div>

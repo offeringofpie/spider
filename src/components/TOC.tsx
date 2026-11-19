@@ -145,7 +145,7 @@ export default function Toc({ htmlContent }: { htmlContent: string }) {
               >
                 <a
                   href={`#${h.id}`}
-                  className={`text-sm text-base-content hover:underline underline-offset-2 decoration-primary transition-colors block truncate min-h-6 py-1 ${
+                  className={`themed-link text-sm text-base-content hover:underline block truncate min-h-6 py-1 ${
                     activeId === h.id ? 'font-semibold underline' : ''
                   }`}
                   onClick={(e) => scrollToSection(e, h.id)}

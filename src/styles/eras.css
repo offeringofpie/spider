@@ -70,6 +70,8 @@
   color: var(--color-primary);
   font-weight: inherit;
   text-decoration-color: currentColor;
+  text-decoration-thickness: auto;
+  text-underline-offset: auto;
 }
 
 :root[data-era] :is(#article-content, .prose) a:visited {
@@ -96,6 +98,7 @@
     .dial > div:not(#fab-menu),
     .btn,
     .notice,
+    .sources,
     .toc
   ) {
   border: 2px solid;
@@ -108,7 +111,7 @@
   border-color: transparent;
 }
 
-:root[data-era] :is(.translator > div, .notice, .toc) {
+:root[data-era] :is(.translator > div, .notice, .sources, .toc) {
   background-color: var(--color-base-200);
 }
 
@@ -198,4 +201,8 @@
   :root[data-era] .max-w-4xl:not(#article-content *) {
     max-width: none;
   }
+}
+
+:root[data-era] .sources {
+  padding: calc(var(--spacing) * 4);
 }

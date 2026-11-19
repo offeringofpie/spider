@@ -1,3 +1,5 @@
+import { sanitize } from './clean';
+
 const namedEntities: Record<string, string> = {
   amp: '&',
   lt: '<',
@@ -61,23 +63,50 @@ export function extractDataRaw(html: string): string | null {
   return decoded.length >= 200 ? decoded : null;
 }
 
-export function paywallTeaser(html: string): string | null {
+function safeHref(attrs: string, base: URL): string | null {
+  const href = attrs.match(/\bhref=["']([^"']+)["']/i)?.[1];
+  if (!href) {
+    return null;
+  }
+  try {
+    const url = new URL(decodeEntities(href), base);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return null;
+    }
+    return url.href.replace(/&/g, '&amp;');
+  } catch {
+    return null;
+  }
+}
+
+function teaserParagraph(inner: string, base: URL): string {
+  return inner
+    .replace(
+      /<a\b([^>]*)>([\s\S]*?)<\/a>/gi,
+      (_, attrs: string, label: string) => {
+        const text = label.replace(/<[^>]+>/g, '');
+        const href = safeHref(attrs, base);
+        return href ? `<a href="${href}">${text}</a>` : text;
+      },
+    )
+    .replace(/<(?!\/?a\b)[^>]+>/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function paywallTeaser(html: string, base: URL): string | null {
   const blocks = html.matchAll(
     /<div[^>]*class=["'][^"']*\bentry-content\b[^"']*["'][^>]*>([\s\S]*?)(?:<div[^>]*class=["'][^"']*expand-paywall|<button[^>]*expand-paywall-button|<\/article)/gi,
   );
   let best = '';
   for (const block of blocks) {
     const paras = [...block[1].matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
-      .map((p) =>
-        decodeEntities(p[1].replace(/<[^>]+>/g, ''))
-          .replace(/\s+/g, ' ')
-          .trim(),
-      )
-      .filter((t) => t.length > 40);
+      .map((p) => teaserParagraph(p[1], base))
+      .filter((t) => decodeEntities(t.replace(/<[^>]+>/g, '')).length > 40);
     const joined = paras.map((t) => `<p>${t}</p>`).join('');
     if (joined.length > best.length) best = joined;
   }
-  return best || null;
+  return best ? sanitize(best) : null;
 }
 
 type LinkTag = {

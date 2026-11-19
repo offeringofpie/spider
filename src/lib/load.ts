@@ -2,7 +2,12 @@ import { defaultStore } from '../store/store';
 import type { DocumentState, LoadedDoc } from '../store/store';
 import { readEvents } from './stream';
 import { eraParam, eraValue } from './era';
-import type { ParseAttempt, ParseMeta, ParsedPost } from './types';
+import type {
+  ParseAttempt,
+  ParseMeta,
+  ParsedPost,
+  SourcesResult,
+} from './types';
 
 type HistoryMode = 'push' | 'replace' | 'none';
 type LoadMode = 'interactive' | 'speculative';
@@ -12,6 +17,11 @@ type LoadOptions = {
   readonly history?: HistoryMode;
   readonly strategy?: string;
   readonly mode?: LoadMode;
+};
+
+type SourcesRequest = {
+  url: string;
+  title: string | null;
 };
 
 type Pending = {
@@ -64,6 +74,7 @@ const adoptPayload = (): boolean => {
         stage: 'final',
         mirror: mirrorOf(meta),
         alternatives: meta.alternatives ?? [],
+        citedSources: meta.citedSources ?? [],
       },
     });
     return true;
@@ -161,6 +172,7 @@ async function run(
             stage: event.stage,
             mirror: mirrorOf(event.meta),
             alternatives: event.meta.alternatives ?? [],
+            citedSources: event.meta.citedSources ?? [],
           };
           publish(doc);
           if (event.stage === 'final' && active.mode === 'speculative') {
@@ -179,6 +191,7 @@ async function run(
             message: event.error,
             url,
             alternatives: event.alternatives ?? [],
+            citedSources: event.citedSources ?? [],
           },
         );
       }
@@ -193,6 +206,7 @@ async function run(
         message: 'Failed to reach parser.',
         url,
         alternatives: [],
+        citedSources: [],
       },
     );
   } finally {
@@ -278,4 +292,32 @@ async function loadArticle(
   await run(url, params, active);
 }
 
-export { loadArticle, adoptPayload, isUrl, currentQuery, urlFromShare };
+const sourcesQuery = (request: SourcesRequest): string => {
+  const params = new URLSearchParams({ url: request.url });
+  if (request.title) {
+    params.set('title', request.title);
+  }
+  return params.toString();
+};
+
+const fetchSources = async (
+  query: string,
+  signal: AbortSignal,
+): Promise<SourcesResult> => {
+  const res = await fetch(`/api/sources?${query}`, { signal });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  return (await res.json()) as SourcesResult;
+};
+
+export {
+  loadArticle,
+  adoptPayload,
+  isUrl,
+  currentQuery,
+  urlFromShare,
+  sourcesQuery,
+  fetchSources,
+};
+export type { SourcesRequest };

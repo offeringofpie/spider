@@ -214,7 +214,7 @@ async function* extractArticle(
       if (!defuddled.dek) {
         defuddled.dek = metaDescription(html);
       }
-      const teaser = paywallTeaser(html);
+      const teaser = paywallTeaser(html, url);
       if (teaser) {
         defuddled.content = teaser;
       }

@@ -27,6 +27,12 @@ body {
 }
 
 html {
+  --link-rest: 45%;
+  --link-thickness: max(1px, 0.06em);
+  --link-thickness-hover: max(2px, 0.1em);
+  --link-offset: 0.24em;
+  --hero-scrim: 85%;
+
   --bg-lift: light-dark(
     oklch(from var(--color-base-100) calc(l + 0.012) c h),
     oklch(from var(--color-base-100) calc(l + 0.035) c h)
@@ -53,18 +59,35 @@ html {
   --tw-prose-bullets: var(--color-base-content);
   --tw-prose-counters: var(--color-base-content);
   --tw-prose-links: var(--color-base-content);
+
+  a {
+    font-weight: inherit;
+  }
+
+  sup a {
+    text-decoration-line: none;
+  }
 }
 
 .themed-link,
 #article-content a {
-  text-decoration-color: var(--color-primary);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
+  text-decoration-color: color-mix(
+    in oklch,
+    currentColor var(--link-rest),
+    transparent
+  );
+  text-decoration-thickness: var(--link-thickness);
+  text-underline-offset: var(--link-offset);
+  text-decoration-skip-ink: auto;
+  transition-property: text-decoration-color, text-decoration-thickness;
+  transition-duration: 300ms;
+  transition-timing-function: ease-in-out;
 }
 
 .themed-link:hover,
 #article-content a:hover {
-  text-decoration-thickness: 2px;
+  text-decoration-color: currentColor;
+  text-decoration-thickness: var(--link-thickness-hover);
 }
 
 .tts {
@@ -74,19 +97,29 @@ html {
   transition: all 300ms ease-in-out;
 }
 
-.masthead {
-  min-height: 380px;
-}
-
 .hero-backdrop {
   height: 600px;
-  filter: blur(12px) brightness(0.3) saturate(1.4);
+  filter: blur(12px) saturate(1.4);
   mask-image: linear-gradient(to bottom, black 55%, transparent 90%);
   -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 90%);
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: color-mix(
+      in oklch,
+      var(--color-base-100) var(--hero-scrim),
+      transparent
+    );
+  }
 }
 
 .masthead .cover {
   height: 220px;
+  outline: 1px solid
+    color-mix(in oklch, var(--color-base-content) 8%, transparent);
+  outline-offset: -1px;
 }
 
 .skiptranslate iframe,

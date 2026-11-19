@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
-import type { Alternative, ParsedPost, ParseMeta } from '../lib/types';
+import type {
+  Alternative,
+  CitedSource,
+  ParsedPost,
+  ParseMeta,
+} from '../lib/types';
 import { pageEra } from '../lib/era';
 import type { Era } from '../lib/era';
 
@@ -98,6 +103,7 @@ type LoadedDoc = {
   stage: 'draft' | 'final';
   mirror: string | null;
   alternatives: Alternative[];
+  citedSources: CitedSource[];
 };
 
 type ErrorDoc = {
@@ -105,6 +111,7 @@ type ErrorDoc = {
   message: string;
   url: string;
   alternatives: Alternative[];
+  citedSources: CitedSource[];
 };
 
 type DocumentState = IdleDoc | LoadingDoc | LoadedDoc | ErrorDoc;

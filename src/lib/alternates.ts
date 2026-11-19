@@ -117,6 +117,34 @@ export function normalizeUrl(value: string): string {
   }
 }
 
+const countryCode = /^[a-z]{2}$/;
+
+const secondLevels = new Set([
+  'ac',
+  'co',
+  'com',
+  'edu',
+  'gob',
+  'gouv',
+  'gov',
+  'govt',
+  'ne',
+  'net',
+  'or',
+  'org',
+]);
+
+export function onHost(host: string, hosts: string[]): boolean {
+  return hosts.some((known) => host === known || host.endsWith(`.${known}`));
+}
+
+export function siteOf(host: string): string {
+  const labels = host.replace(/^www\./, '').split('.');
+  const [second, top] = labels.slice(-2);
+  const nested = countryCode.test(top) && secondLevels.has(second);
+  return labels.slice(nested ? -3 : -2).join('.');
+}
+
 function tagContent(xml: string, tag: string): string | null {
   const match = xml.match(
     new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)</${tag}>`, 'i'),

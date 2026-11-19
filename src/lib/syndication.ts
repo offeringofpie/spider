@@ -8,6 +8,7 @@ import {
 import { extractArticle } from './extractors';
 import type { ParsedArticle } from './extractors';
 import { countWords, decodeEntities } from './extract';
+import { onHost } from './alternates';
 import { articleResult } from './markdown';
 import type { Alternative, ParseEvent } from './types';
 
@@ -238,11 +239,16 @@ function headline(title: string): string {
 }
 
 function slugTitle(url: URL): string | null {
-  const slug = url.pathname.split('/').filter(Boolean).pop() ?? '';
-  const words = slug
-    .replace(/\.[a-z]+$/i, '')
-    .split(/[-_]+/)
-    .filter((word) => word && !/\d/.test(word));
+  let words: string[] = [];
+  for (const segment of url.pathname.split('/')) {
+    const found = segment
+      .replace(/\.[a-z]+$/i, '')
+      .split(/[-_]+/)
+      .filter((word) => word && !/\d/.test(word));
+    if (found.length >= words.length) {
+      words = found;
+    }
+  }
   return words.length > 0 ? words.join(' ') : null;
 }
 
@@ -252,10 +258,6 @@ function bareHost(href: string): string | null {
   } catch {
     return null;
   }
-}
-
-function onHost(host: string, hosts: string[]): boolean {
-  return hosts.some((known) => host === known || host.endsWith(`.${known}`));
 }
 
 function timeOf(value: string | null | undefined): number | null {
@@ -324,34 +326,46 @@ function gdeltCandidates(text: string): Candidate[] {
   return candidates;
 }
 
+function keywords(title: string, language: Language): string {
+  return [...tokens(title, language)].slice(0, searchKeywords).join(' ');
+}
+
+async function bingSearch(
+  queries: string[],
+  language: Language,
+  market: string,
+  timeout: number,
+): Promise<Candidate[]> {
+  const urls = queries.map((query) => {
+    return `https://www.bing.com/news/search?q=${encodeURIComponent(query)}&format=rss&mkt=${market}`;
+  });
+  const headers = {
+    ...browserHeaders,
+    'Accept-Language': `${market},${language};q=0.9`,
+  };
+  const results = await fetchGroup(urls, headers, timeout);
+  return results.flatMap((fetched) => bingCandidates(fetched.text));
+}
+
 async function search(
   title: string,
   language: Language,
   market: string,
   timeout: number,
 ): Promise<Candidate[]> {
-  const keywords = [...tokens(title, language)]
-    .slice(0, searchKeywords)
-    .join(' ');
-  const bingUrl = (query: string) => {
-    return `https://www.bing.com/news/search?q=${encodeURIComponent(query)}&format=rss&mkt=${market}`;
-  };
-  const bingHeaders = {
-    ...browserHeaders,
-    'Accept-Language': `${market},${language};q=0.9`,
-  };
+  const terms = keywords(title, language);
   const [bing, gdelt] = await Promise.all([
-    fetchGroup([bingUrl(title), bingUrl(keywords)], bingHeaders, timeout),
+    bingSearch([title, terms], language, market, timeout),
     fetchGroup(
       [
-        `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(keywords)}&mode=ArtList&format=json&maxrecords=10`,
+        `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(terms)}&mode=ArtList&format=json&maxrecords=10`,
       ],
       browserHeaders,
       timeout,
     ),
   ]);
   return [
-    ...bing.flatMap((fetched) => bingCandidates(fetched.text)),
+    ...bing,
     ...gdelt.flatMap((fetched) => gdeltCandidates(fetched.text)),
   ];
 }
@@ -529,4 +543,19 @@ async function* resolveSyndication(
   return { mirror, alternatives };
 }
 
-export { resolveSyndication };
+export {
+  resolveSyndication,
+  bingSearch,
+  keywords,
+  tokens,
+  similarity,
+  headline,
+  slugTitle,
+  bareHost,
+  languageOf,
+  marketOf,
+  openHosts,
+  gatedHosts,
+  msnHost,
+};
+export type { Candidate };

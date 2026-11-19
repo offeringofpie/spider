@@ -38,6 +38,7 @@ import {
 import { fetchMediumContent, isMedium } from './medium';
 import { botChallenge, mediumPage } from './detect';
 import { resolveSyndication } from './syndication';
+import { harvestCitations } from './citations';
 import {
   readHostStats,
   readResult,
@@ -48,6 +49,7 @@ import {
 import type { AttemptLog, HostStats } from './cache';
 import type {
   Alternative,
+  CitedSource,
   ParseAttempt,
   ParseEvent,
   ParseMeta,
@@ -67,6 +69,7 @@ type StepContext = {
   platform: ParseMeta['platform'];
   title: string | null;
   alternatives: Alternative[];
+  citedSources: CitedSource[];
 };
 
 type StrategySuccess = {
@@ -149,6 +152,10 @@ async function* tryStrategy(
   }
   if (!botChallenge(fetched.html, null)) {
     context.title ??= ogTitle(fetched.html) ?? titleFromHtml(fetched.html);
+    const cited = harvestCitations(fetched.html, url);
+    if (cited.length > context.citedSources.length) {
+      context.citedSources = cited;
+    }
   }
 
   try {
@@ -609,6 +616,7 @@ function metaOf(
     platform: context.platform,
     source: 'live',
     alternatives: context.alternatives,
+    citedSources: context.citedSources,
   };
 }
 
@@ -679,6 +687,7 @@ async function* runSteps(
     platform: knownMedium ? 'medium' : null,
     title: null,
     alternatives: [],
+    citedSources: [],
   };
   for (const name of directSteps) {
     const strategy = strategies.find((s) => s.name === name);
@@ -828,6 +837,7 @@ async function* runSteps(
     url: url.href,
     attempts,
     alternatives: context.alternatives,
+    citedSources: context.citedSources,
   };
 }
 

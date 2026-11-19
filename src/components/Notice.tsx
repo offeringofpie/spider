@@ -1,27 +1,17 @@
-import type { MouseEvent } from 'react';
-import { loadArticle } from '../lib/load';
-import type { Alternative } from '../lib/types';
+import type { ReactNode } from 'react';
 
 type Props = {
   message: string;
   url: string;
-  alternatives: Alternative[];
   onUnlock?: () => void;
+  children?: ReactNode;
 };
 
-const openInReader = (event: MouseEvent, url: string): void => {
-  if (event.metaKey || event.ctrlKey || event.shiftKey) {
-    return;
-  }
-  event.preventDefault();
-  loadArticle(url);
-};
-
-export default function ArchiveNotice({
+export default function Notice({
   message,
   url,
-  alternatives,
   onUnlock,
+  children,
 }: Props) {
   const links = [
     { href: url, label: 'Open original' },
@@ -53,25 +43,7 @@ export default function ArchiveNotice({
           Unlock full article
         </button>
       )}
-      {alternatives.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <span className="font-medium">Also covered by</span>
-          <ul className="flex flex-col gap-1">
-            {alternatives.map((alt) => (
-              <li key={alt.url}>
-                <a
-                  href={`/?q=${encodeURIComponent(alt.url)}`}
-                  onClick={(event) => openInReader(event, alt.url)}
-                  className="themed-link text-base-content underline"
-                >
-                  {alt.title}
-                </a>
-                <span className="text-base-content/60"> · {alt.source}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {children}
       <div className="flex flex-wrap gap-4">
         {links.map((l) => (
           <a

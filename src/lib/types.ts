@@ -17,6 +17,28 @@ type Alternative = {
   source: string;
 };
 
+type CitedCategory =
+  | 'study'
+  | 'official'
+  | 'code-data'
+  | 'document'
+  | 'reporting';
+
+type CitedSource = {
+  url: string;
+  title: string;
+  host: string;
+  category: CitedCategory;
+};
+
+type RelatedArticle = Alternative & {
+  matchKind: 'syndication' | 'coverage';
+};
+
+type SourcesResult = {
+  relatedArticles: RelatedArticle[];
+};
+
 type ParseMeta = {
   readonly originalUrl: string;
   readonly fetchedUrl: string;
@@ -26,6 +48,7 @@ type ParseMeta = {
   readonly platform: 'medium' | null;
   readonly source: 'live' | 'cache' | 'client';
   alternatives?: Alternative[];
+  citedSources?: CitedSource[];
 };
 
 type ParseAttempt =
@@ -67,6 +90,7 @@ type ParseResult =
       readonly url: string;
       readonly attempts: readonly ParseAttempt[];
       alternatives?: Alternative[];
+      citedSources?: CitedSource[];
     };
 
 type ParseEvent =
@@ -86,10 +110,15 @@ type ParseEvent =
       readonly url: string;
       readonly attempts: readonly ParseAttempt[];
       alternatives?: Alternative[];
+      citedSources?: CitedSource[];
     };
 
 export type {
   Alternative,
+  CitedCategory,
+  CitedSource,
+  RelatedArticle,
+  SourcesResult,
   ParsedPost,
   ParseMeta,
   ParseAttempt,

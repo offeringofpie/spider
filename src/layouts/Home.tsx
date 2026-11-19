@@ -5,7 +5,8 @@ import { themeFor } from '../lib/era';
 import { loadArticle, isUrl } from '../lib/load';
 import { isMedium } from '../lib/medium';
 import TOC from '../components/TOC';
-import ArchiveNotice from '../components/ArchiveNotice';
+import Notice from '../components/Notice';
+import Sources from '../components/Sources';
 
 const stepLabels = {
   regular: 'Fetching the article',
@@ -132,10 +133,9 @@ export default function Home(): React.ReactElement | null {
             <h1 className="font-semibold tracking-tight text-2xl text-error mb-4">
               Could not render this article
             </h1>
-            <ArchiveNotice
+            <Notice
               message={doc.message}
               url={doc.url}
-              alternatives={doc.alternatives}
               onUnlock={
                 isMedium(doc.url)
                   ? () =>
@@ -145,12 +145,21 @@ export default function Home(): React.ReactElement | null {
                       })
                   : undefined
               }
-            />
+            >
+              <Sources
+                key={doc.url}
+                variant="notice"
+                request={{ url: doc.url, title: null }}
+                citedSources={doc.citedSources}
+                alternatives={doc.alternatives}
+              />
+            </Notice>
           </article>
         </div>
       );
 
-    case 'loaded':
+    case 'loaded': {
+      const request = { url: doc.post.url, title: doc.post.title };
       return (
         <div className="w-full text-base-content">
           <article className="text-left">
@@ -183,15 +192,13 @@ export default function Home(): React.ReactElement | null {
                 prose-headings:font-semibold
                 prose-headings:tracking-tight
                 prose-headings:block
-                prose-p:my-4
-                prose-a:underline prose-a:underline-offset-2`}
+                prose-p:my-4`}
               dangerouslySetInnerHTML={{ __html: doc.post.content }}
             />
             {doc.paywalled && doc.stage === 'final' && (
-              <ArchiveNotice
+              <Notice
                 message="This article is behind a paywall."
                 url={doc.post.url}
-                alternatives={doc.alternatives}
                 onUnlock={
                   doc.platform === 'medium'
                     ? () =>
@@ -201,11 +208,29 @@ export default function Home(): React.ReactElement | null {
                         })
                     : undefined
                 }
+              >
+                <Sources
+                  key={doc.post.url}
+                  variant="notice"
+                  request={request}
+                  citedSources={doc.citedSources}
+                  alternatives={doc.alternatives}
+                />
+              </Notice>
+            )}
+            {!doc.paywalled && doc.stage === 'final' && (
+              <Sources
+                key={doc.post.url}
+                variant="footer"
+                request={request}
+                citedSources={doc.citedSources}
+                alternatives={doc.alternatives}
               />
             )}
           </article>
         </div>
       );
+    }
 
     default: {
       const _exhaustive: never = doc;

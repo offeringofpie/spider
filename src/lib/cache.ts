@@ -1,7 +1,7 @@
 import { getStore } from '@netlify/blobs';
 import { createHash } from 'node:crypto';
 import { normalizeUrl } from './alternates';
-import type { ParseAttempt, ParseResult } from './types';
+import type { ParseAttempt, ParseResult, SourcesResult } from './types';
 
 const version = 'v1';
 const readTimeout = 400;
@@ -9,17 +9,24 @@ const writeTimeout = 600;
 const digestLength = 22;
 const parsedStore = 'spider-parsed';
 const statsStore = 'spider-host-stats';
+const sourcesStore = 'spider-sources';
 
 const ttl = {
   confident: 24 * 60 * 60 * 1000,
   partial: 60 * 60 * 1000,
   failure: 5 * 60 * 1000,
   retained: 7 * 24 * 60 * 60 * 1000,
+  sources: 6 * 60 * 60 * 1000,
 } as const;
 
 type CacheRecord = {
   readonly expires: number;
   readonly result: ParseResult;
+};
+
+type SourcesRecord = {
+  expires: number;
+  result: SourcesResult;
 };
 
 type AttemptLog = {
@@ -85,9 +92,9 @@ async function writeJson(
   await withTimeout(blobs.setJSON(key, value).catch(() => null), writeTimeout);
 }
 
-function resultKey(url: URL): string {
+function resultKey(url: URL, variant = ''): string {
   const digest = createHash('sha256')
-    .update(normalizeUrl(url.href))
+    .update(normalizeUrl(url.href) + variant)
     .digest('base64url')
     .slice(0, digestLength);
   return `${version}/${url.hostname}/${digest}`;
@@ -133,6 +140,27 @@ async function writeResult(url: URL, result: ParseResult): Promise<void> {
   await writeJson(parsedStore, key, record);
 }
 
+async function readSources(
+  url: URL,
+  variant: string,
+): Promise<SourcesResult | null> {
+  const key = resultKey(url, variant);
+  const record = await readJson<SourcesRecord>(sourcesStore, key);
+  if (!record || record.expires < Date.now()) {
+    return null;
+  }
+  return record.result;
+}
+
+async function writeSources(
+  url: URL,
+  variant: string,
+  result: SourcesResult,
+): Promise<void> {
+  const record: SourcesRecord = { expires: Date.now() + ttl.sources, result };
+  await writeJson(sourcesStore, resultKey(url, variant), record);
+}
+
 async function readHostStats(host: string): Promise<HostStats | null> {
   return readJson<HostStats>(statsStore, `${version}/${host}`);
 }
@@ -170,5 +198,13 @@ async function writeLog(url: URL, log: AttemptLog): Promise<void> {
   await withTimeout(blobs.setJSON(key, log).catch(() => null), writeTimeout);
 }
 
-export { readResult, writeResult, writeLog, readHostStats, writeHostStats };
+export {
+  readResult,
+  writeResult,
+  writeLog,
+  readHostStats,
+  writeHostStats,
+  readSources,
+  writeSources,
+};
 export type { AttemptLog, HostStats };
